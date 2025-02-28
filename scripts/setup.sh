@@ -179,6 +179,11 @@ EOF
                 echo "Role already exists, skipping creation"
             fi
 
+            echo "Setting up the Amazon CloudWatch Observability EKS add-on"
+            aws iam attach-role-policy --role-name VPCLatticeControllerIAMRole --policy-arn=arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy --no-cli-pager
+            aws eks create-addon --addon-name amazon-cloudwatch-observability --cluster-name $CLUSTER_NAME --pod-identity-associations serviceAccount=cloudwatch-agent,roleArn=$VPCLatticeControllerIAMRoleArn --no-cli-pager
+            echo "Amazon CloudWatch Observability EKS add-on set up successfully"
+
             eksctl create podidentityassociation --cluster $CLUSTER_NAME --namespace aws-application-networking-system --service-account-name gateway-api-controller --role-arn $VPCLatticeControllerIAMRoleArn
 
             echo "Installing the controller"
