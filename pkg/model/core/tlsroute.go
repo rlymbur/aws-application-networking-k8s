@@ -174,6 +174,10 @@ type TLSRouteRule struct {
 	r gwv1alpha2.TLSRouteRule
 }
 
+func (r *TLSRouteRule) Priority() *int64 {
+	return r.Priority()
+}
+
 func (r *TLSRouteRule) BackendRefs() []BackendRef {
 	var backendRefs []BackendRef
 	for _, backendRef := range r.r.BackendRefs {

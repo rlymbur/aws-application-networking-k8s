@@ -172,6 +172,10 @@ type HTTPRouteRule struct {
 	r gwv1.HTTPRouteRule
 }
 
+func (r *HTTPRouteRule) Priority() *int64 {
+	return r.Priority()
+}
+
 func (r *HTTPRouteRule) BackendRefs() []BackendRef {
 	var backendRefs []BackendRef
 	for _, backendRef := range r.r.BackendRefs {

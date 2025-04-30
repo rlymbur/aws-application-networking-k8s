@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-application-networking-k8s/pkg/utils"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -32,10 +33,40 @@ func (t *latticeServiceModelBuildTask) buildRules(ctx context.Context, stackList
 	// note we only build rules for non-deleted routes
 	t.log.Debugf(ctx, "Processing %d rules", len(t.route.Spec().Rules()))
 
+	rulesWithoutPriority := make([]core.RouteRule, 0)
+	priorityQueue := make(utils.PriorityQueue, len(t.route.Spec().Rules()))
+
+	// Order rules with assigned priority
 	for i, rule := range t.route.Spec().Rules() {
+		if rule.Priority() != nil {
+			t.log.Debugf(ctx, "Rule priority set to %d", rule.Priority())
+			priorityQueue[i] = &utils.Item{
+				Value:    rule,
+				Priority: *rule.Priority(),
+				Index:    i,
+			}
+
+		} else {
+			rulesWithoutPriority = append(rulesWithoutPriority, rule)
+		}
+	}
+
+	// Assign rules without a manually assigned priority a priority in sequential order following the greatest
+	// manually assigned priority
+	for _, ruleSpec := range rulesWithoutPriority {
+		priorityQueue[priorityQueue.Len()] = &utils.Item{
+			Value:    ruleSpec,
+			Priority: priorityQueue.Peek().Priority + 1,
+			Index:    priorityQueue.Len(),
+		}
+	}
+
+	for _, item := range priorityQueue {
+		rule := item.Value.(core.RouteRule)
+
 		ruleSpec := model.RuleSpec{
 			StackListenerId: stackListenerId,
-			Priority:        int64(i + 1),
+			Priority:        *rule.Priority(),
 		}
 
 		if len(rule.Matches()) > 1 {

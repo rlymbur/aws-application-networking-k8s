@@ -172,6 +172,10 @@ type GRPCRouteRule struct {
 	r gwv1.GRPCRouteRule
 }
 
+func (r *GRPCRouteRule) Priority() *int64 {
+	return r.Priority()
+}
+
 func (r *GRPCRouteRule) BackendRefs() []BackendRef {
 	var backendRefs []BackendRef
 	for _, backendRef := range r.r.BackendRefs {
