@@ -76,6 +76,7 @@ type RouteRule interface {
 	BackendRefs() []BackendRef
 	Matches() []RouteMatch
 	Equals(routeRule RouteRule) bool
+	Priority() *int32
 }
 
 type BackendRef interface {

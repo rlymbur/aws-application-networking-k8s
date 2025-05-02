@@ -85,7 +85,57 @@ In this example:
   rule to apply.
 - Due to the priority values, the `/ver1` rule will be evaluated before the `/ver2` rule, regardless of creation order.
 
-### Example 2
+### Example 2: Using Rule Priorities
+
+Here is a sample configuration that demonstrates how to set up a custom `HTTPRoute` with rule priorities to control the order of rule evaluation in VPC Lattice:
+
+```yaml
+apiVersion: application-networking.k8s.aws/v1alpha1
+kind: HTTPRoute
+metadata:
+  name: inventory
+spec:
+  parentRefs:
+    - name: my-hotel
+      sectionName: http
+  rules:
+    - backendRefs:
+        - name: inventory-admin
+          kind: Service
+          port: 80
+      matches:
+        - path:
+            type: PathPrefix
+            value: /admin
+      priority: 100  # Higher priority rule evaluated first
+    - backendRefs:
+        - name: inventory-api
+          kind: Service
+          port: 80
+      matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      priority: 50   # Medium priority rule
+    - backendRefs:
+        - name: inventory-web
+          kind: Service
+          port: 80
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
+      priority: 1    # Lowest priority rule (catch-all)
+```
+
+In this example:
+- The `/admin` path has the highest priority (100) and will be evaluated first
+- The `/api` path has medium priority (50) and will be evaluated second
+- The `/` path has the lowest priority (1) and acts as a catch-all route
+- Rules with higher priority values are evaluated first by VPC Lattice
+- If no priority is specified, rules are evaluated in order of creation
+
+### Example 3: Weighted Rules
 
 Here is a sample configuration that demonstrates how to set up a `HTTPRoute` that forwards HTTP and HTTPS traffic to a
 Service and ServiceImport, using weighted rules to route more traffic to one backendRef than the other. Weighted rules

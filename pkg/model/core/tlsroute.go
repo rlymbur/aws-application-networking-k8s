@@ -188,6 +188,12 @@ func (r *TLSRouteRule) Matches() []RouteMatch {
 	return matches
 }
 
+func (r *TLSRouteRule) Priority() *int32 {
+	// TLS routes don't support matches, so we can't store priority in headers
+	// Always return nil to indicate no priority, rules will be evaluated in order
+	return nil
+}
+
 func (r *TLSRouteRule) Equals(routeRule RouteRule) bool {
 	other, ok := routeRule.(*TLSRouteRule)
 	if !ok {
@@ -214,6 +220,7 @@ func (r *TLSRouteRule) Equals(routeRule RouteRule) bool {
 		}
 	}
 
+	// TLS routes don't support priority, so no need to compare priorities
 	return true
 }
 

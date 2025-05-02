@@ -188,6 +188,21 @@ func (r *GRPCRouteRule) Matches() []RouteMatch {
 	return routeMatches
 }
 
+func (r *GRPCRouteRule) Priority() *int32 {
+	// Check if there's a priority header in matches
+	for _, match := range r.r.Matches {
+		for _, header := range match.Headers {
+			if header.Name == "x-lattice-rule-priority" {
+				priority, err := utils.ParseInt32(header.Value)
+				if err == nil {
+					return &priority
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (r *GRPCRouteRule) Equals(routeRule RouteRule) bool {
 	other, ok := routeRule.(*GRPCRouteRule)
 	if !ok {
@@ -212,6 +227,14 @@ func (r *GRPCRouteRule) Equals(routeRule RouteRule) bool {
 		if !match.Equals(otherMatch) {
 			return false
 		}
+	}
+
+	// Compare priorities
+	if (r.Priority() == nil) != (routeRule.Priority() == nil) {
+		return false
+	}
+	if r.Priority() != nil && routeRule.Priority() != nil && *r.Priority() != *routeRule.Priority() {
+		return false
 	}
 
 	return true

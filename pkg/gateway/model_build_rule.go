@@ -34,10 +34,10 @@ func (t *latticeServiceModelBuildTask) buildRules(ctx context.Context, stackList
 	t.log.Debugf(ctx, "Processing %d rules", len(t.route.Spec().Rules()))
 
 	rulesWithoutPriority := make([]core.RouteRule, 0)
-	priorityQueue := make(utils.PriorityQueue, len(t.route.Spec().Rules()))
+	rulesWithPriority := make([]*utils.Item, 0)
 
-	// Order rules with assigned priority
-	for i, rule := range t.route.Spec().Rules() {
+	// First pass: collect rules with and without priorities
+	for _, rule := range t.route.Spec().Rules() {
 		t.log.Debugf(ctx, "Rule priority is: %d", rule.Priority())
 
 		if rule.Priority() != nil {
@@ -47,26 +47,42 @@ func (t *latticeServiceModelBuildTask) buildRules(ctx context.Context, stackList
 				return fmt.Errorf("rule priority must be between 1 and %d, got %d", model.MaxRulePriority, *rule.Priority())
 			}
 
-			priorityQueue[i] = &utils.Item{
+			rulesWithPriority = append(rulesWithPriority, &utils.Item{
 				Value:    rule,
 				Priority: int32(*rule.Priority()),
-				Index:    i,
-			}
-
+			})
 		} else {
 			rulesWithoutPriority = append(rulesWithoutPriority, rule)
 		}
 	}
 
-	// Assign rules without a manually assigned priority a priority in sequential order following the greatest
-	// manually assigned priority
+	// Initialize priority queue with the correct size
+	totalRules := len(rulesWithPriority) + len(rulesWithoutPriority)
+	priorityQueue := make(utils.PriorityQueue, 0, totalRules)
+
+	// Add rules with manual priorities first
+	for i, item := range rulesWithPriority {
+		item.Index = i
+		priorityQueue = append(priorityQueue, item)
+	}
+
+	// Assign rules without a manually assigned priority a priority in sequential order
+	nextPriority := int32(1)
+	if priorityQueue.Len() > 0 {
+		// If there are rules with manually assigned priorities, start after the highest one
+		nextPriority = priorityQueue.Peek().Priority + 1
+	}
+
+	// Add rules without priority
 	for _, ruleSpec := range rulesWithoutPriority {
-		t.log.Debugf(ctx, "Setting default rule priority set to: %d", priorityQueue.Peek().Priority+1)
-		priorityQueue[priorityQueue.Len()] = &utils.Item{
+		t.log.Debugf(ctx, "Setting default rule priority to: %d", nextPriority)
+		item := &utils.Item{
 			Value:    ruleSpec,
-			Priority: priorityQueue.Peek().Priority + 1,
-			Index:    priorityQueue.Len(),
+			Priority: nextPriority,
+			Index:    len(priorityQueue),
 		}
+		priorityQueue = append(priorityQueue, item)
+		nextPriority++
 	}
 
 	for _, item := range priorityQueue {
@@ -74,7 +90,7 @@ func (t *latticeServiceModelBuildTask) buildRules(ctx context.Context, stackList
 
 		ruleSpec := model.RuleSpec{
 			StackListenerId: stackListenerId,
-			Priority:        int64(*rule.Priority()),
+			Priority:        int64(item.Priority),
 		}
 
 		if len(rule.Matches()) > 1 {
