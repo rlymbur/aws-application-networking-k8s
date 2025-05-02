@@ -1,0 +1,981 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.9.2
+  name: httproutes.application-networking.k8s.aws
+spec:
+  group: application-networking.k8s.aws
+  names:
+    categories:
+    - gateway-api
+    kind: HTTPRoute
+    listKind: HTTPRouteList
+    plural: httproutes
+    shortName:
+    - hr
+    singular: httproute
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: HTTPRoute is the Schema for the HTTPRoute API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest internal
+              value, and may reject unrecognized values.'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this object
+              represents.'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: HTTPRouteSpec extends the Gateway API HTTPRouteSpec with additional fields
+            properties:
+              hostnames:
+                description: Hostnames defines a set of hostname that should match against
+                  the HTTP Host header to select a HTTPRoute to process the request.
+                items:
+                  type: string
+                maxItems: 16
+                type: array
+              parentRefs:
+                description: ParentRefs references the resources (usually Gateways) that
+                  a Route wants to connect to.
+                items:
+                  description: ParentReference identifies an API object (usually a Gateway)
+                    that can be considered a parent of this resource (usually a route).
+                  properties:
+                    group:
+                      default: gateway.networking.k8s.io
+                      description: Group is the group of the referent.
+                      maxLength: 253
+                      pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                      type: string
+                    kind:
+                      default: Gateway
+                      description: Kind is kind of the referent.
+                      maxLength: 63
+                      minLength: 1
+                      pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                      type: string
+                    name:
+                      description: Name is the name of the referent.
+                      maxLength: 253
+                      minLength: 1
+                      type: string
+                    namespace:
+                      description: Namespace is the namespace of the referent.
+                      maxLength: 63
+                      minLength: 1
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    sectionName:
+                      description: SectionName is the name of a section within the target
+                        resource.
+                      maxLength: 253
+                      minLength: 1
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                      type: string
+                  required:
+                  - name
+                  type: object
+                maxItems: 32
+                minItems: 1
+                type: array
+              rules:
+                description: Rules are a list of HTTP matchers, filters and actions.
+                items:
+                  description: HTTPRouteRule extends the Gateway API HTTPRouteRule with additional fields
+                  properties:
+                    backendRefs:
+                      description: BackendRefs defines the backend(s) where matching requests
+                        should be sent.
+                      items:
+                        description: HTTPBackendRef defines how a HTTPRoute should forward
+                          an HTTP request.
+                        properties:
+                          filters:
+                            description: Filters defined at this level should be executed
+                              if and only if the request is being forwarded to the backend
+                              defined here.
+                            items:
+                              description: HTTPRouteFilter defines processing steps that
+                                must be completed during the request or response lifecycle.
+                              properties:
+                                extensionRef:
+                                  description: ExtensionRef is an optional, implementation-specific
+                                    extension to the "filter" behavior.
+                                  properties:
+                                    group:
+                                      description: Group is the group of the referent.
+                                      maxLength: 253
+                                      pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                      type: string
+                                    kind:
+                                      description: Kind is kind of the referent.
+                                      maxLength: 63
+                                      minLength: 1
+                                      pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                                      type: string
+                                    name:
+                                      description: Name is the name of the referent.
+                                      maxLength: 253
+                                      minLength: 1
+                                      type: string
+                                  required:
+                                  - group
+                                  - kind
+                                  - name
+                                  type: object
+                                requestHeaderModifier:
+                                  description: RequestHeaderModifier defines a schema
+                                    for a filter that modifies request headers.
+                                  properties:
+                                    add:
+                                      description: Add adds the given header(s) to the
+                                        request before the action.
+                                      items:
+                                        description: HTTPHeader represents an HTTP Header
+                                          name and value as defined by RFC 7230.
+                                        properties:
+                                          name:
+                                            description: "Name is the name of the HTTP
+                                              Header to be matched. Name matching MUST
+                                              be case insensitive. \n The Name field
+                                              is required and MUST NOT be empty."
+                                            maxLength: 256
+                                            minLength: 1
+                                            pattern: ^[A-Za-z0-9!#$%&'*+\-.^_\x60|~]+$
+                                            type: string
+                                          value:
+                                            description: Value is the value of HTTP Header
+                                              to be matched.
+                                            maxLength: 4096
+                                            type: string
+                                        required:
+                                        - name
+                                        - value
+                                        type: object
+                                      maxItems: 16
+                                      type: array
+                                      x-kubernetes-list-map-keys:
+                                      - name
+                                      x-kubernetes-list-type: map
+                                    remove:
+                                      description: Remove the given header(s) from the
+                                        HTTP request before the action. The value of Remove
+                                        is a list of HTTP header names. Note that the
+                                        header names are case-insensitive.
+                                      items:
+                                        type: string
+                                      maxItems: 16
+                                      type: array
+                                    set:
+                                      description: Set overwrites the request with the
+                                        given header(s) before the action.
+                                      items:
+                                        description: HTTPHeader represents an HTTP Header
+                                          name and value as defined by RFC 7230.
+                                        properties:
+                                          name:
+                                            description: "Name is the name of the HTTP
+                                              Header to be matched. Name matching MUST
+                                              be case insensitive. \n The Name field
+                                              is required and MUST NOT be empty."
+                                            maxLength: 256
+                                            minLength: 1
+                                            pattern: ^[A-Za-z0-9!#$%&'*+\-.^_\x60|~]+$
+                                            type: string
+                                          value:
+                                            description: Value is the value of HTTP Header
+                                              to be matched.
+                                            maxLength: 4096
+                                            type: string
+                                        required:
+                                        - name
+                                        - value
+                                        type: object
+                                      maxItems: 16
+                                      type: array
+                                      x-kubernetes-list-map-keys:
+                                      - name
+                                      x-kubernetes-list-type: map
+                                  type: object
+                                requestMirror:
+                                  description: RequestMirror defines a schema for a filter
+                                    that mirrors requests.
+                                  properties:
+                                    backendRef:
+                                      description: "BackendRef references a resource where
+                                        requests should be mirrored to. \n If the referent
+                                        cannot be found, this BackendRef is invalid and
+                                        must be dropped from the Gateway. The controller
+                                        must ensure the \"ResolvedRefs\" condition on
+                                        the Route status is set to \"False\" and not
+                                        configure this backend in the underlying implementation."
+                                      properties:
+                                        group:
+                                          default: ""
+                                          description: Group is the group of the referent.
+                                          maxLength: 253
+                                          pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                          type: string
+                                        kind:
+                                          default: Service
+                                          description: Kind is kind of the referent.
+                                          maxLength: 63
+                                          minLength: 1
+                                          pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                                          type: string
+                                        name:
+                                          description: Name is the name of the referent.
+                                          maxLength: 253
+                                          minLength: 1
+                                          type: string
+                                        namespace:
+                                          description: Namespace is the namespace of the
+                                            backend.
+                                          maxLength: 63
+                                          minLength: 1
+                                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                          type: string
+                                        port:
+                                          description: Port is the port of the referent.
+                                          format: int32
+                                          maximum: 65535
+                                          minimum: 1
+                                          type: integer
+                                      required:
+                                      - name
+                                      type: object
+                                  required:
+                                  - backendRef
+                                  type: object
+                                requestRedirect:
+                                  description: RequestRedirect defines a schema for a
+                                    filter that responds to the request with an HTTP redirection.
+                                  properties:
+                                    hostname:
+                                      description: "Hostname is the hostname to be used
+                                        in the value of the Location header in the response.
+                                        \n When empty, the hostname in the Host header
+                                        of the request is used."
+                                      maxLength: 253
+                                      minLength: 1
+                                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                      type: string
+                                    path:
+                                      description: "Path defines parameters used to modify
+                                        the path of the incoming request. The modified
+                                        path is then used to construct the Location header.
+                                        When empty, the request path is used as-is."
+                                      properties:
+                                        replacePrefixMatch:
+                                          description: "ReplacePrefixMatch specifies the
+                                            path prefix to be replaced with ReplaceWith.
+                                            If the match prefix is specified and the prefix
+                                            of the request path matches, the modified
+                                            path will be the request path with the matched
+                                            prefix replaced by ReplaceWith. \n When both
+                                            Type and ReplacePrefixMatch are specified,
+                                            the Type field MUST be \"ReplacePrefix\"."
+                                          type: string
+                                        replaceWith:
+                                          description: "ReplaceWith specifies the replacement
+                                            path. \n When Type is \"ReplaceFullPath\",
+                                            the entire path is replaced with this value.
+                                            When Type is \"ReplacePrefixMatch\", the prefix
+                                            matching the value in ReplacePrefixMatch is
+                                            replaced with this value."
+                                          type: string
+                                        type:
+                                          default: ReplaceFullPath
+                                          description: "Type defines the type of path
+                                            modifier. \n When \"ReplaceFullPath\", the
+                                            entire path is replaced with the value of
+                                            ReplaceWith. \n When \"ReplacePrefixMatch\",
+                                            only the prefix matching the value in ReplacePrefixMatch
+                                            is replaced with the value of ReplaceWith.
+                                            \n Support: Extended"
+                                          enum:
+                                          - ReplaceFullPath
+                                          - ReplacePrefixMatch
+                                          type: string
+                                      type: object
+                                    port:
+                                      description: "Port is the port to be used in the
+                                        value of the Location header in the response.
+                                        \n When empty, port (if specified) of the request
+                                        is used."
+                                      format: int32
+                                      maximum: 65535
+                                      minimum: 1
+                                      type: integer
+                                    scheme:
+                                      description: "Scheme is the scheme to be used in
+                                        the value of the Location header in the response.
+                                        \n When empty, the scheme of the request is used."
+                                      enum:
+                                      - http
+                                      - https
+                                      type: string
+                                    statusCode:
+                                      default: 302
+                                      description: "StatusCode is the HTTP status code
+                                        to be used in response. \n Support: Extended"
+                                      format: int32
+                                      maximum: 399
+                                      minimum: 300
+                                      type: integer
+                                  type: object
+                                responseHeaderModifier:
+                                  description: ResponseHeaderModifier defines a schema
+                                    for a filter that modifies response headers.
+                                  properties:
+                                    add:
+                                      description: Add adds the given header(s) to the
+                                        response before the action.
+                                      items:
+                                        description: HTTPHeader represents an HTTP Header
+                                          name and value as defined by RFC 7230.
+                                        properties:
+                                          name:
+                                            description: "Name is the name of the HTTP
+                                              Header to be matched. Name matching MUST
+                                              be case insensitive. \n The Name field
+                                              is required and MUST NOT be empty."
+                                            maxLength: 256
+                                            minLength: 1
+                                            pattern: ^[A-Za-z0-9!#$%&'*+\-.^_\x60|~]+$
+                                            type: string
+                                          value:
+                                            description: Value is the value of HTTP Header
+                                              to be matched.
+                                            maxLength: 4096
+                                            type: string
+                                        required:
+                                        - name
+                                        - value
+                                        type: object
+                                      maxItems: 16
+                                      type: array
+                                      x-kubernetes-list-map-keys:
+                                      - name
+                                      x-kubernetes-list-type: map
+                                    remove:
+                                      description: Remove the given header(s) from the
+                                        HTTP response before the action. The value of
+                                        Remove is a list of HTTP header names. Note that
+                                        the header names are case-insensitive.
+                                      items:
+                                        type: string
+                                      maxItems: 16
+                                      type: array
+                                    set:
+                                      description: Set overwrites the response with the
+                                        given header(s) before the action.
+                                      items:
+                                        description: HTTPHeader represents an HTTP Header
+                                          name and value as defined by RFC 7230.
+                                        properties:
+                                          name:
+                                            description: "Name is the name of the HTTP
+                                              Header to be matched. Name matching MUST
+                                              be case insensitive. \n The Name field
+                                              is required and MUST NOT be empty."
+                                            maxLength: 256
+                                            minLength: 1
+                                            pattern: ^[A-Za-z0-9!#$%&'*+\-.^_\x60|~]+$
+                                            type: string
+                                          value:
+                                            description: Value is the value of HTTP Header
+                                              to be matched.
+                                            maxLength: 4096
+                                            type: string
+                                        required:
+                                        - name
+                                        - value
+                                        type: object
+                                      maxItems: 16
+                                      type: array
+                                      x-kubernetes-list-map-keys:
+                                      - name
+                                      x-kubernetes-list-type: map
+                                  type: object
+                                type:
+                                  description: Type identifies the type of filter to apply.
+                                  enum:
+                                  - RequestHeaderModifier
+                                  - ResponseHeaderModifier
+                                  - RequestMirror
+                                  - RequestRedirect
+                                  type: string
+                              required:
+                              - type
+                              type: object
+                            maxItems: 16
+                            type: array
+                          group:
+                            default: ""
+                            description: Group is the group of the referent.
+                            maxLength: 253
+                            pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                            type: string
+                          kind:
+                            default: Service
+                            description: Kind is kind of the referent.
+                            maxLength: 63
+                            minLength: 1
+                            pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                            type: string
+                          name:
+                            description: Name is the name of the referent.
+                            maxLength: 253
+                            minLength: 1
+                            type: string
+                          namespace:
+                            description: Namespace is the namespace of the backend.
+                            maxLength: 63
+                            minLength: 1
+                            pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                            type: string
+                          port:
+                            description: Port is the port of the referent.
+                            format: int32
+                            maximum: 65535
+                            minimum: 1
+                            type: integer
+                          weight:
+                            default: 1
+                            description: Weight specifies the proportion of requests forwarded
+                              to the referenced backend.
+                            format: int32
+                            maximum: 1000000
+                            minimum: 0
+                            type: integer
+                        required:
+                        - name
+                        type: object
+                      maxItems: 16
+                      type: array
+                    filters:
+                      description: Filters define the filters that are applied to requests
+                        that match this rule.
+                      items:
+                        description: HTTPRouteFilter defines processing steps that must
+                          be completed during the request or response lifecycle.
+                        properties:
+                          extensionRef:
+                            description: ExtensionRef is an optional, implementation-specific
+                              extension to the "filter" behavior.
+                            properties:
+                              group:
+                                description: Group is the group of the referent.
+                                maxLength: 253
+                                pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                type: string
+                              kind:
+                                description: Kind is kind of the referent.
+                                maxLength: 63
+                                minLength: 1
+                                pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                                type: string
+                              name:
+                                description: Name is the name of the referent.
+                                maxLength: 253
+                                minLength: 1
+                                type: string
+                            required:
+                            - group
+                            - kind
+                            - name
+                            type: object
+                          requestHeaderModifier:
+                            description: RequestHeaderModifier defines a schema for a
+                              filter that modifies request headers.
+                            properties:
+                              add:
+                                description: Add adds the given header(s) to the request
+                                  before the action.
+                                items:
+                                  description: HTTPHeader represents an HTTP Header name
+                                    and value as defined by RFC 7230.
+                                  properties:
+                                    name:
+                                      description: "Name is the name of the HTTP Header
+                                        to be matched. Name matching MUST be case insensitive.
+                                        \n The Name field is required and MUST NOT be
+                                        empty."
+                                      maxLength: 256
+                                      minLength: 1
+                                      pattern: ^[A-Za-z0-9!#$%&'*+\-.^_\x60|~]+$
+                                      type: string
+                                    value:
+                                      description: Value is the value of HTTP Header to
+                                        be matched.
+                                      maxLength: 4096
+                                      type: string
+                                  required:
+                                  - name
+                                  - value
+                                  type: object
+                                maxItems: 16
+                                type: array
+                                x-kubernetes-list-map-keys:
+                                - name
+                                x-kubernetes-list-type: map
+                            type: object
+                          type:
+                            description: Type identifies the type of filter to apply.
+                            enum:
+                            - RequestHeaderModifier
+                            - ResponseHeaderModifier
+                            - RequestMirror
+                            - RequestRedirect
+                            type: string
+                        required:
+                        - type
+                        type: object
+                      maxItems: 16
+                      type: array
+                    matches:
+                      description: Matches define conditions used for matching the rule against incoming HTTP requests.
+                      items:
+                        description: HTTPRouteMatch defines the predicate used to match requests to a given action.
+                        properties:
+                          headers:
+                            description: Headers specifies HTTP request header matchers.
+                            items:
+                              description: HTTPHeaderMatch describes how to select a HTTP route by matching HTTP request headers.
+                              properties:
+                                name:
+                                  description: Name is the name of the HTTP Header to be matched.
+                                  maxLength: 256
+                                  minLength: 1
+                                  pattern: ^[A-Za-z0-9!#$%&'*+\-.^_\x60|~]+$
+                                  type: string
+                                type:
+                                  default: Exact
+                                  description: Type specifies how to match against the value of the header.
+                                  enum:
+                                  - Exact
+                                  - RegularExpression
+                                  type: string
+                                value:
+                                  description: Value is the value of HTTP Header to be matched.
+                                  maxLength: 4096
+                                  type: string
+                              required:
+                              - name
+                              - value
+                              type: object
+                            maxItems: 16
+                            type: array
+                          method:
+                            description: Method specifies HTTP method matcher.
+                            enum:
+                            - GET
+                            - HEAD
+                            - POST
+                            - PUT
+                            - DELETE
+                            - CONNECT
+                            - OPTIONS
+                            - TRACE
+                            - PATCH
+                            type: string
+                          path:
+                            description: Path specifies HTTP path matcher.
+                            properties:
+                              type:
+                                default: Exact
+                                description: Type specifies how to match against the path.
+                                enum:
+                                - Exact
+                                - PathPrefix
+                                - RegularExpression
+                                type: string
+                              value:
+                                description: Value of the path to match against.
+                                maxLength: 1024
+                                type: string
+                            required:
+                            - value
+                            type: object
+                          queryParams:
+                            description: QueryParams specifies HTTP query parameter matchers.
+                            items:
+                              description: HTTPQueryParamMatch describes how to select a HTTP route by matching HTTP query parameters.
+                              properties:
+                                name:
+                                  description: Name is the name of the HTTP query param to be matched.
+                                  maxLength: 256
+                                  minLength: 1
+                                  pattern: ^[A-Za-z0-9!#$%&'*+\-.^_\x60|~]+$
+                                  type: string
+                                type:
+                                  default: Exact
+                                  description: Type specifies how to match against the value of the query parameter.
+                                  enum:
+                                  - Exact
+                                  - RegularExpression
+                                  type: string
+                                value:
+                                  description: Value is the value of HTTP query param to be matched.
+                                  maxLength: 1024
+                                  type: string
+                              required:
+                              - name
+                              - value
+                              type: object
+                            maxItems: 8
+                            type: array
+                        type: object
+                      maxItems: 8
+                      type: array
+                    priority:
+                      description: Priority defines the order in which rules are evaluated. Rules with higher priority values are evaluated first. If not specified, rules are evaluated in order of creation.
+                      format: int32
+                      type: integer
+                  type: object
+                maxItems: 16
+                minItems: 1
+                type: array
+            required:
+            - parentRefs
+            - rules
+            type: object
+          status:
+            description: HTTPRouteStatus defines the observed state of HTTPRoute
+            properties:
+              parents:
+                description: Parents is a list of parent resources (usually Gateways) that are associated with the route, and the status of the route with respect to each parent.
+                items:
+                  description: RouteParentStatus describes the status of a route with respect to an associated parent.
+                  properties:
+                    conditions:
+                      description: Conditions describes the status of the route with respect to the Gateway.
+                      items:
+                        description: "Condition contains details for one aspect of the current state of this API Resource."
+                        properties:
+                          lastTransitionTime:
+                            description: lastTransitionTime is the last time the condition transitioned from one status to another.
+                            format: date-time
+                            type: string
+                          message:
+                            description: message is a human readable message indicating details about the transition.
+                            type: string
+                          observedGeneration:
+                            description: observedGeneration represents the .metadata.generation that the condition was set based upon.
+                            format: int64
+                            minimum: 0
+                            type: integer
+                          reason:
+                            description: reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                            type: string
+                          status:
+                            description: status of the condition, one of True, False, Unknown.
+                            type: string
+                          type:
+                            description: type of condition in CamelCase.
+                            type: string
+                        required:
+                        - lastTransitionTime
+                        - message
+                        - reason
+                        - status
+                        - type
+                        type: object
+                      maxItems: 8
+                      type: array
+                      x-kubernetes-list-map-keys:
+                      - type
+                      x-kubernetes-list-type: map
+                    controllerName:
+                      description: ControllerName is a domain/path string that indicates the name of the controller that wrote this status.
+                      maxLength: 253
+                      minLength: 1
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\/[A-Za-z0-9\/\-._~%!$&'()*+,;=:]+$
+                      type: string
+                    parentRef:
+                      description: ParentRef corresponds with a ParentRef in the spec that this RouteParentStatus struct describes the status of.
+                      properties:
+                        group:
+                          default: gateway.networking.k8s.io
+                          description: Group is the group of the referent.
+                          maxLength: 253
+                          pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                          type: string
+                        kind:
+                          default: Gateway
+                          description: Kind is kind of the referent.
+                          maxLength: 63
+                          minLength: 1
+                          pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                          type: string
+                        name:
+                          description: Name is the name of the referent.
+                          maxLength: 253
+                          minLength: 1
+                          type: string
+                        namespace:
+                          description: Namespace is the namespace of the referent.
+                          maxLength: 63
+                          minLength: 1
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        sectionName:
+                          description: SectionName is the name of a section within the target resource.
+                          maxLength: 253
+                          minLength: 1
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                          type: string
+                      required:
+                      - name
+                      type: object
+                  required:
+                  - controllerName
+                  - parentRef
+                  type: object
+                maxItems: 32
+                type: array
+            required:
+            - parents
+            type: object
+        type: object
+    served: true
+    storage: true
+                              remove:
+                                description: Remove the given header(s) from the HTTP
+                                  request before the action. The value of Remove is a
+                                  list of HTTP header names. Note that the header names
+                                  are case-insensitive.
+                                items:
+                                  type: string
+                                maxItems: 16
+                                type: array
+                              set:
+                                description: Set overwrites the request with the given
+                                  header(s) before the action.
+                                items:
+                                  description: HTTPHeader represents an HTTP Header name
+                                    and value as defined by RFC 7230.
+                                  properties:
+                                    name:
+                                      description: "Name is the name of the HTTP Header
+                                        to be matched. Name matching MUST be case insensitive.
+                                        \n The Name field is required and MUST NOT be
+                                        empty."
+                                      maxLength: 256
+                                      minLength: 1
+                                      pattern: ^[A-Za-z0-9!#$%&'*+\-.^_\x60|~]+$
+                                      type: string
+                                    value:
+                                      description: Value is the value of HTTP Header to
+                                        be matched.
+                                      maxLength: 4096
+                                      type: string
+                                  required:
+                                  - name
+                                  - value
+                                  type: object
+                                maxItems: 16
+                                type: array
+                                x-kubernetes-list-map-keys:
+                                - name
+                                x-kubernetes-list-type: map
+                            type: object
+                          requestMirror:
+                            description: RequestMirror defines a schema for a filter that
+                              mirrors requests.
+                            properties:
+                              backendRef:
+                                description: "BackendRef references a resource where requests
+                                  should be mirrored to. \n If the referent cannot be
+                                  found, this BackendRef is invalid and must be dropped
+                                  from the Gateway. The controller must ensure the \"ResolvedRefs\"
+                                  condition on the Route status is set to \"False\" and
+                                  not configure this backend in the underlying implementation."
+                                properties:
+                                  group:
+                                    default: ""
+                                    description: Group is the group of the referent.
+                                    maxLength: 253
+                                    pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                    type: string
+                                  kind:
+                                    default: Service
+                                    description: Kind is kind of the referent.
+                                    maxLength: 63
+                                    minLength: 1
+                                    pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                                    type: string
+                                  name:
+                                    description: Name is the name of the referent.
+                                    maxLength: 253
+                                    minLength: 1
+                                    type: string
+                                  namespace:
+                                    description: Namespace is the namespace of the backend.
+                                    maxLength: 63
+                                    minLength: 1
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                    type: string
+                                  port:
+                                    description: Port is the port of the referent.
+                                    format: int32
+                                    maximum: 65535
+                                    minimum: 1
+                                    type: integer
+                                required:
+                                - name
+                                type: object
+                            required:
+                            - backendRef
+                            type: object
+                          requestRedirect:
+                            description: RequestRedirect defines a schema for a filter
+                              that responds to the request with an HTTP redirection.
+                            properties:
+                              hostname:
+                                description: "Hostname is the hostname to be used in the
+                                  value of the Location header in the response. \n When
+                                  empty, the hostname in the Host header of the request
+                                  is used."
+                                maxLength: 253
+                                minLength: 1
+                                pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                type: string
+                              path:
+                                description: "Path defines parameters used to modify the
+                                  path of the incoming request. The modified path is then
+                                  used to construct the Location header. When empty, the
+                                  request path is used as-is."
+                                properties:
+                                  replacePrefixMatch:
+                                    description: "ReplacePrefixMatch specifies the path
+                                      prefix to be replaced with ReplaceWith. If the
+                                      match prefix is specified and the prefix of the
+                                      request path matches, the modified path will be
+                                      the request path with the matched prefix replaced
+                                      by ReplaceWith. \n When both Type and ReplacePrefixMatch
+                                      are specified, the Type field MUST be \"ReplacePrefix\"."
+                                    type: string
+                                  replaceWith:
+                                    description: "ReplaceWith specifies the replacement
+                                      path. \n When Type is \"ReplaceFullPath\", the
+                                      entire path is replaced with this value. When Type
+                                      is \"ReplacePrefixMatch\", the prefix matching
+                                      the value in ReplacePrefixMatch is replaced with
+                                      this value."
+                                    type: string
+                                  type:
+                                    default: ReplaceFullPath
+                                    description: "Type defines the type of path modifier.
+                                      \n When \"ReplaceFullPath\", the entire path is
+                                      replaced with the value of ReplaceWith. \n When
+                                      \"ReplacePrefixMatch\", only the prefix matching
+                                      the value in ReplacePrefixMatch is replaced with
+                                      the value of ReplaceWith. \n Support: Extended"
+                                    enum:
+                                    - ReplaceFullPath
+                                    - ReplacePrefixMatch
+                                    type: string
+                                type: object
+                              port:
+                                description: "Port is the port to be used in the value
+                                  of the Location header in the response. \n When empty,
+                                  port (if specified) of the request is used."
+                                format: int32
+                                maximum: 65535
+                                minimum: 1
+                                type: integer
+                              scheme:
+                                description: "Scheme is the scheme to be used in the
+                                  value of the Location header in the response. \n When
+                                  empty, the scheme of the request is used."
+                                enum:
+                                - http
+                                - https
+                                type: string
+                              statusCode:
+                                default: 302
+                                description: "StatusCode is the HTTP status code to be
+                                  used in response. \n Support: Extended"
+                                format: int32
+                                maximum: 399
+                                minimum: 300
+                                type: integer
+                            type: object
+                          responseHeaderModifier:
+                            description: ResponseHeaderModifier defines a schema for a
+                              filter that modifies response headers.
+                            properties:
+                              add:
+                                description: Add adds the given header(s) to the response
+                                  before the action.
+                                items:
+                                  description: HTTPHeader represents an HTTP Header name
+                                    and value as defined by RFC 7230.
+                                  properties:
+                                    name:
+                                      description: "Name is the name of the HTTP Header
+                                        to be matched. Name matching MUST be case insensitive.
+                                        \n The Name field is required and MUST NOT be
+                                        empty."
+                                      maxLength: 256
+                                      minLength: 1
+                                      pattern: ^[A-Za-z0-9!#$%&'*+\-.^_\x60|~]+$
+                                      type: string
+                                    value:
+                                      description: Value is the value of HTTP Header to
+                                        be matched.
+                                      maxLength: 4096
+                                      type: string
+                                  required:
+                                  - name
+                                  - value
+                                  type: object
+                                maxItems: 16
+                                type: array
+                                x-kubernetes-list-map-keys:
+                                - name
+                                x-kubernetes-list-type: map
+                              remove:
+                                description: Remove the given header(s) from the HTTP
+                                  response before the action. The value of Remove is a
+                                  list of HTTP header names. Note that the header names
+                                  are case-insensitive.
+                                items:
+                                  type: string
+                                maxItems: 16
+                                type: array
+                              set:
+                                description: Set overwrites the response with the given
+                                  header(s) before the action.
+                                items:
+                                  description: HTTPHeader represents an HTTP Header name
+                                    and value as defined by RFC 7230.
+                                  properties:
+                                    name:
+                                      description: "Name is the name of the HTTP Header
+                                        to be matched. Name matching MUST be case insensitive.
+                                        \n The Name field is required and MUST NOT be
+                                        empty."
+                                      maxLength: 256
+                                      minLength: 1
+                                      pattern: ^[A-Za-z0-9!#$%&'*+\-.^_\x60|~]+$
+                                      type: string
+                                    value:
+                                      description: Value is the value of HTTP Header to
+                                        be matched.
+                                      maxLength: 4096
+                                      type: string
+                                  required:
+                                  - name
+                                  - value

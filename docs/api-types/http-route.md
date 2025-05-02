@@ -32,13 +32,19 @@ This allows you to define and manage the routing of HTTP and HTTPS traffic withi
 
 ## Example Configuration
 
+### Priority Field
+
+The `HTTPRoute` resource now supports a `priority` field in each rule to control the order in which rules are evaluated. Rules with higher priority values are evaluated first. If not specified, rules are evaluated in order of creation.
+
+This is particularly useful when configuring VPC Lattice listener rules, as it provides explicit control over rule evaluation order.
+
 ### Example 1
 
 Here is a sample configuration that demonstrates how to set up an `HTTPRoute` that forwards HTTP traffic to a
-Service and ServiceImport, using rules to determine which backendRef to route traffic to.
+Service and ServiceImport, using rules with priorities to determine which backendRef to route traffic to.
 
 ```yaml
-apiVersion: gateway.networking.k8s.io/v1
+apiVersion: application-networking.k8s.aws/v1alpha1
 kind: HTTPRoute
 metadata:
   name: inventory
@@ -55,6 +61,7 @@ spec:
         - path:
             type: PathPrefix
             value: /ver1
+      priority: 2  # Higher priority rule evaluated first
     - backendRefs:
         - name: inventory-ver2
           kind: ServiceImport
@@ -63,18 +70,20 @@ spec:
         - path:
             type: PathPrefix
             value: /ver2
+      priority: 1  # Lower priority rule evaluated second
 ```
 
 In this example:
 
 - The `HTTPRoute` is named `inventory` and is associated with a parent gateway named `my-hotel` that has
   a section named `http`.
-- The first routing rule forwards traffic to a backend Service named `inventory-ver1` on port `80`.
+- The first routing rule has a priority of 2 and forwards traffic to a backend Service named `inventory-ver1` on port `80`.
   The rule also specifies a path match condition, where traffic must have a path starting with `/ver1` for the routing
   rule to apply.
-- The second routing rule forwards traffic to a backend ServiceImport named `inventory-ver2` on port `80`.
+- The second routing rule has a priority of 1 and forwards traffic to a backend ServiceImport named `inventory-ver2` on port `80`.
   The rule also specifies a path match condition, where traffic must have a path starting with `/ver2` for the routing
   rule to apply.
+- Due to the priority values, the `/ver1` rule will be evaluated before the `/ver2` rule, regardless of creation order.
 
 ### Example 2
 
