@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/aws/aws-application-networking-k8s/pkg/utils"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -13,10 +15,9 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 
+	model "github.com/aws/aws-application-networking-k8s/pkg/model/lattice"
 	"github.com/aws/aws-sdk-go/service/vpclattice"
 	gwv1 "sigs.k8s.io/gateway-api/apis/v1"
-
-	model "github.com/aws/aws-application-networking-k8s/pkg/model/lattice"
 )
 
 const (
@@ -32,10 +33,48 @@ func (t *latticeServiceModelBuildTask) buildRules(ctx context.Context, stackList
 	// note we only build rules for non-deleted routes
 	t.log.Debugf(ctx, "Processing %d rules", len(t.route.Spec().Rules()))
 
+	rulesWithoutPriority := make([]core.RouteRule, 0)
+	priorityQueue := make(utils.PriorityQueue, len(t.route.Spec().Rules()))
+
+	// Order rules with assigned priority
 	for i, rule := range t.route.Spec().Rules() {
+		t.log.Debugf(ctx, "Rule priority is: %d", rule.Priority())
+
+		if rule.Priority() != nil {
+			t.log.Debugf(ctx, "Rule priority has been manually set to: %d", *rule.Priority())
+
+			if *rule.Priority() < 1 || *rule.Priority() > model.MaxRulePriority {
+				return fmt.Errorf("rule priority must be between 1 and %d, got %d", model.MaxRulePriority, *rule.Priority())
+			}
+
+			priorityQueue[i] = &utils.Item{
+				Value:    rule,
+				Priority: int32(*rule.Priority()),
+				Index:    i,
+			}
+
+		} else {
+			rulesWithoutPriority = append(rulesWithoutPriority, rule)
+		}
+	}
+
+	// Assign rules without a manually assigned priority a priority in sequential order following the greatest
+	// manually assigned priority
+	for _, ruleSpec := range rulesWithoutPriority {
+		t.log.Debugf(ctx, "Setting default rule priority set to: %d", priorityQueue.Peek().Priority+1)
+		priorityQueue[priorityQueue.Len()] = &utils.Item{
+			Value:    ruleSpec,
+			Priority: priorityQueue.Peek().Priority + 1,
+			Index:    priorityQueue.Len(),
+		}
+	}
+
+	for _, item := range priorityQueue {
+		rule := item.Value.(core.RouteRule)
+
 		ruleSpec := model.RuleSpec{
 			StackListenerId: stackListenerId,
-			Priority:        int64(i + 1),
+			Priority:        int64(*rule.Priority()),
 		}
 
 		if len(rule.Matches()) > 1 {
@@ -67,7 +106,7 @@ func (t *latticeServiceModelBuildTask) buildRules(ctx context.Context, stackList
 			ruleSpec.PathMatchValue = "/"
 			ruleSpec.PathMatchPrefix = true
 			if _, ok := rule.(*core.GRPCRouteRule); ok {
-				ruleSpec.Method = string(gwv1.HTTPMethodPost)
+				ruleSpec.Method = "POST"
 			}
 
 		}
@@ -110,12 +149,12 @@ func (t *latticeServiceModelBuildTask) updateRuleSpecForHttpRoute(m *core.HTTPRo
 			*m.Path().Type, *m.Path().Value, t.route.Name(), t.route.Namespace())
 
 		switch *m.Path().Type {
-		case gwv1.PathMatchExact:
+		case "Exact":
 			t.log.Debugf(context.TODO(), "Using PathMatchExact for httproute %s-%s ",
 				t.route.Name(), t.route.Namespace())
 			ruleSpec.PathMatchExact = true
 
-		case gwv1.PathMatchPathPrefix:
+		case "PathPrefix":
 			t.log.Debugf(context.TODO(), "Using PathMatchPathPrefix for httproute %s-%s ",
 				t.route.Name(), t.route.Namespace())
 			ruleSpec.PathMatchPrefix = true
@@ -146,7 +185,7 @@ func (t *latticeServiceModelBuildTask) updateRuleSpecForHttpRoute(m *core.HTTPRo
 
 func (t *latticeServiceModelBuildTask) updateRuleSpecForGrpcRoute(m *core.GRPCRouteMatch, ruleSpec *model.RuleSpec) error {
 	t.log.Debugf(context.TODO(), "Building rule with GRPCRouteMatch, %+v", *m)
-	ruleSpec.Method = string(gwv1.HTTPMethodPost) // GRPC is always POST
+	ruleSpec.Method = "POST" // GRPC is always POST
 	method := m.Method()
 	// VPC Lattice doesn't support suffix/regex matching, so we can't support method match without service
 	if method.Service == nil && method.Method != nil {
@@ -186,7 +225,7 @@ func (t *latticeServiceModelBuildTask) updateRuleSpecWithHeaderMatches(match cor
 
 	for _, header := range match.Headers() {
 		t.log.Debugf(context.TODO(), "Examining match.Header: header.Type %s", *header.Type())
-		if header.Type() != nil && *header.Type() != gwv1.HeaderMatchExact {
+		if header.Type() != nil && *header.Type() != "Exact" {
 			t.log.Debugf(context.TODO(), "Unsupported header matchtype %s for httproute %s-%s",
 				*header.Type(), t.route.Name(), t.route.Namespace())
 			return errors.New(LATTICE_UNSUPPORTED_HEADER_MATCH_TYPE)
