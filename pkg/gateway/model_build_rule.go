@@ -35,6 +35,7 @@ func (t *latticeServiceModelBuildTask) buildRules(ctx context.Context, stackList
 
 	rulesWithoutPriority := make([]core.RouteRule, 0)
 	rulesWithPriority := make([]*utils.Item, 0)
+	var highestPriority int32
 
 	// First pass: collect rules with and without priorities
 	for _, rule := range t.route.Spec().Rules() {
@@ -51,6 +52,10 @@ func (t *latticeServiceModelBuildTask) buildRules(ctx context.Context, stackList
 				Value:    rule,
 				Priority: int32(*rule.Priority()),
 			})
+
+			if *rule.Priority() > highestPriority {
+				highestPriority = *rule.Priority()
+			}
 		} else {
 			rulesWithoutPriority = append(rulesWithoutPriority, rule)
 		}
@@ -68,9 +73,9 @@ func (t *latticeServiceModelBuildTask) buildRules(ctx context.Context, stackList
 
 	// Assign rules without a manually assigned priority a priority in sequential order
 	nextPriority := int32(1)
-	if priorityQueue.Len() > 0 {
+	if len(rulesWithPriority) > 0 {
 		// If there are rules with manually assigned priorities, start after the highest one
-		nextPriority = priorityQueue.Peek().Priority + 1
+		nextPriority = highestPriority + 1
 	}
 
 	// Add rules without priority
@@ -93,10 +98,22 @@ func (t *latticeServiceModelBuildTask) buildRules(ctx context.Context, stackList
 			Priority:        int64(item.Priority),
 		}
 
-		if len(rule.Matches()) > 1 {
+		var priorityManuallyAssigned = false
+		for _, match := range rule.Matches() {
+			for _, header := range match.Headers() {
+				if header.Name() == "x-lattice-rule-priority" {
+					priorityManuallyAssigned = true
+				}
+			}
+		}
+
+		// If a rule is manually assigned a priority, it will have an additional match assigned with a new
+		// "x-lattice-rule-priority" header.
+		if (len(rule.Matches()) > 1 && !priorityManuallyAssigned) || (len(rule.Matches()) > 2 && priorityManuallyAssigned) {
 			// only support 1 match today
 			return errors.New(LATTICE_NO_SUPPORT_FOR_MULTIPLE_MATCHES)
-		} else if len(rule.Matches()) > 0 {
+		} else if len(rule.Matches()) > 0 && !priorityManuallyAssigned {
+
 			t.log.Debugf(ctx, "Processing rule match")
 			match := rule.Matches()[0]
 
