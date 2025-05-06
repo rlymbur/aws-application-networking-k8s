@@ -21,3 +21,6 @@ pkg/**/prog.*
 
 # Image build tarballed bundles
 *.tgz
+
+# Misc.
+.DS_Store

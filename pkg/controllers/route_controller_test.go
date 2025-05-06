@@ -43,6 +43,7 @@ func TestRouteReconciler_ReconcileCreates(t *testing.T) {
 	clientgoscheme.AddToScheme(k8sScheme)
 	gwv1.Install(k8sScheme)
 	discoveryv1.AddToScheme(k8sScheme)
+	anv1alpha1.Install(k8sScheme)
 	addOptionalCRDs(k8sScheme)
 
 	k8sClient := testclient.
