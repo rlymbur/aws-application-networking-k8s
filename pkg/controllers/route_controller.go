@@ -226,6 +226,7 @@ func (r *routeReconciler) getRoute(ctx context.Context, req ctrl.Request) (core.
 					// Store priority in an annotation since Gateway API HTTPRoute doesn't have priority
 					if gwRule.Matches == nil {
 						gwRule.Matches = []gwv1.HTTPRouteMatch{}
+						gwRule.Matches = append(gwRule.Matches, gwv1.HTTPRouteMatch{})
 					}
 					for i := range gwRule.Matches {
 						if gwRule.Matches[i].Headers == nil {
