@@ -295,6 +295,69 @@ func Test_Create(t *testing.T) {
 	})
 }
 
+func Test_CreateWithTempPriority(t *testing.T) {
+	c := gomock.NewController(t)
+	defer c.Finish()
+	ctx := context.TODO()
+	mockLattice := mocks.NewMockLattice(c)
+	cloud := pkg_aws.NewDefaultCloud(mockLattice, TestCloudConfig)
+
+	svc := &model.Service{
+		Status: &model.ServiceStatus{Id: "svc-id"},
+	}
+
+	l := &model.Listener{
+		Spec: model.ListenerSpec{
+			Port:     80,
+			Protocol: "HTTP",
+		},
+		Status: &model.ListenerStatus{Id: "listener-id"},
+	}
+
+	r := &model.Rule{
+		Spec: model.RuleSpec{
+			Priority: 1,
+			Method:   "POST",
+		},
+	}
+
+	mockLattice.EXPECT().GetRulesAsList(ctx, gomock.Any()).Return(
+		[]*vpclattice.GetRuleOutput{
+			{
+				Id:  aws.String("existing-id"),
+				Arn: aws.String("existing-arn"),
+				Match: &vpclattice.RuleMatch{
+					HttpMatch: &vpclattice.HttpMatch{
+						Method: aws.String("GET"), // <-- will be considered a different rule
+					},
+				},
+				Name:     aws.String("existing-name"),
+				Priority: aws.Int64(1), // <-- we have the same priority
+			},
+		}, nil)
+
+	expectedPriority := int64(2)
+
+	mockLattice.EXPECT().CreateRuleWithContext(ctx, gomock.Any()).DoAndReturn(
+		func(ctx context.Context, input *vpclattice.CreateRuleInput, i ...interface{}) (*vpclattice.CreateRuleOutput, error) {
+			// 2 is the "next" available priority
+			assert.Equal(t, expectedPriority, aws.Int64Value(input.Priority))
+
+			return &vpclattice.CreateRuleOutput{
+				Arn:      aws.String("new-arn"),
+				Id:       aws.String("new-id"),
+				Name:     aws.String("new-name"),
+				Priority: aws.Int64(expectedPriority),
+			}, nil
+		})
+
+	rm := NewRuleManager(gwlog.FallbackLogger, cloud)
+	ruleStatus, err := rm.Upsert(ctx, r, l, svc)
+	assert.Nil(t, err)
+	assert.Equal(t, "new-arn", ruleStatus.Arn)
+	assert.Equal(t, expectedPriority, ruleStatus.Priority)
+}
+
 func Test_UpdatePriorities(t *testing.T) {
 	c := gomock.NewController(t)
 	defer c.Finish()

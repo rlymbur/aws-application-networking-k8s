@@ -94,7 +94,6 @@ func RegisterAllRouteControllers(
 		gatewayApiType client.Object
 	}{
 		{core.HttpRouteType, &gwv1.HTTPRoute{}},
-		{core.HttpRouteType, &anv1alpha1.HTTPRoute{}}, // Add our custom HTTPRoute
 		{core.GrpcRouteType, &gwv1.GRPCRoute{}},
 		{core.TlsRouteType, &gwv1alpha2.TLSRoute{}},
 	}
@@ -224,10 +223,7 @@ func (r *routeReconciler) getRoute(ctx context.Context, req ctrl.Request) (core.
 		err := r.client.Get(ctx, req.NamespacedName, customRoute)
 		if err == nil {
 			return utils.ConvertV1Alpha1ToCore(customRoute), nil
-		} else if !apierrors.IsNotFound(err) {
-			return nil, err
 		}
-		// Fall back to Gateway API HTTPRoute
 		return core.GetHTTPRoute(ctx, r.client, req.NamespacedName)
 	case core.GrpcRouteType:
 		return core.GetGRPCRoute(ctx, r.client, req.NamespacedName)

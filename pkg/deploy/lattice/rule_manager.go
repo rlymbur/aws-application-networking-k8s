@@ -251,13 +251,11 @@ func (r *defaultRuleManager) create(
 	latticeSvcId string,
 	latticeListenerId string,
 ) (model.RuleStatus, error) {
-	if ruleToCreate.Priority == nil {
-		priority, err := r.nextAvailablePriority(currentLatticeRules)
-		if err != nil {
-			return model.RuleStatus{}, err
-		}
-		ruleToCreate.Priority = aws.Int64(priority)
+	priority, err := r.nextAvailablePriority(currentLatticeRules)
+	if err != nil {
+		return model.RuleStatus{}, err
 	}
+	ruleToCreate.Priority = aws.Int64(priority)
 
 	cri := vpclattice.CreateRuleInput{
 		Action:             ruleToCreate.Action,
