@@ -223,37 +223,7 @@ func (r *routeReconciler) getRoute(ctx context.Context, req ctrl.Request) (core.
 		customRoute := &anv1alpha1.HTTPRoute{}
 		err := r.client.Get(ctx, req.NamespacedName, customRoute)
 		if err == nil {
-			// Convert our custom HTTPRoute to Gateway API HTTPRoute
-			gwRoute := &gwv1.HTTPRoute{
-				TypeMeta:   customRoute.TypeMeta,
-				ObjectMeta: customRoute.ObjectMeta,
-				Status:     customRoute.Status,
-			}
-			// Copy spec fields
-			gwRoute.Spec.ParentRefs = customRoute.Spec.ParentRefs
-			gwRoute.Spec.Hostnames = customRoute.Spec.Hostnames
-			// Convert rules, preserving priority
-			for _, rule := range customRoute.Spec.Rules {
-				gwRule := rule.HTTPRouteRule
-				if rule.Priority != nil {
-					// Store priority in an annotation since Gateway API HTTPRoute doesn't have priority
-					if gwRule.Matches == nil {
-						gwRule.Matches = []gwv1.HTTPRouteMatch{}
-						gwRule.Matches = append(gwRule.Matches, gwv1.HTTPRouteMatch{})
-					}
-					for i := range gwRule.Matches {
-						if gwRule.Matches[i].Headers == nil {
-							gwRule.Matches[i].Headers = []gwv1.HTTPHeaderMatch{}
-						}
-						gwRule.Matches[i].Headers = append(gwRule.Matches[i].Headers, gwv1.HTTPHeaderMatch{
-							Name:  "x-lattice-rule-priority",
-							Value: fmt.Sprintf("%d", *rule.Priority),
-						})
-					}
-				}
-				gwRoute.Spec.Rules = append(gwRoute.Spec.Rules, gwRule)
-			}
-			return core.NewHTTPRoute(*gwRoute), nil
+			return utils.ConvertV1Alpha1ToCore(customRoute), nil
 		} else if !apierrors.IsNotFound(err) {
 			return nil, err
 		}

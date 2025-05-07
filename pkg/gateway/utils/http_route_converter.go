@@ -50,18 +50,18 @@ func ConvertHTTPRoute(route interface{}) (interface{}, error) {
 
 	switch r := route.(type) {
 	case *core.HTTPRoute:
-		return convertCoreToV1Alpha1(r), nil
+		return ConvertCoreToV1Alpha1(r), nil
 	case *anv1alpha1.HTTPRoute:
-		return convertV1Alpha1ToCore(r), nil
+		return ConvertV1Alpha1ToCore(r), nil
 	case anv1alpha1.HTTPRoute:
-		return convertV1Alpha1ToCore(&r), nil
+		return ConvertV1Alpha1ToCore(&r), nil
 	default:
 		return nil, fmt.Errorf("unsupported HTTPRoute type")
 	}
 }
 
-// convertCoreToV1Alpha1 converts a core.HTTPRoute to anv1alpha1.HTTPRoute
-func convertCoreToV1Alpha1(coreRoute *core.HTTPRoute) *anv1alpha1.HTTPRoute {
+// ConvertCoreToV1Alpha1 converts a core.HTTPRoute to anv1alpha1.HTTPRoute
+func ConvertCoreToV1Alpha1(coreRoute *core.HTTPRoute) *anv1alpha1.HTTPRoute {
 	v1alpha1Route := &anv1alpha1.HTTPRoute{
 		TypeMeta:   coreRoute.Inner().TypeMeta,
 		ObjectMeta: coreRoute.Inner().ObjectMeta,
@@ -136,8 +136,8 @@ func convertCoreToV1Alpha1(coreRoute *core.HTTPRoute) *anv1alpha1.HTTPRoute {
 	return v1alpha1Route
 }
 
-// convertV1Alpha1ToCore converts an anv1alpha1.HTTPRoute to core.HTTPRoute
-func convertV1Alpha1ToCore(v1alpha1Route *anv1alpha1.HTTPRoute) *core.HTTPRoute {
+// ConvertV1Alpha1ToCore converts an anv1alpha1.HTTPRoute to core.HTTPRoute
+func ConvertV1Alpha1ToCore(v1alpha1Route *anv1alpha1.HTTPRoute) *core.HTTPRoute {
 	route := gwv1.HTTPRoute{
 		TypeMeta:   v1alpha1Route.TypeMeta,
 		ObjectMeta: v1alpha1Route.ObjectMeta,
