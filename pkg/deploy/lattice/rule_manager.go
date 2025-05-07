@@ -251,15 +251,13 @@ func (r *defaultRuleManager) create(
 	latticeSvcId string,
 	latticeListenerId string,
 ) (model.RuleStatus, error) {
-	// when we create a rule, we just pick an available priority so we can
-	// successfully create the rule. After all rules are created, we update
-	// priorities based on the order they appear in the Route. Note, this
-	// approach is not fully compliant with the gw spec
-	priority, err := r.nextAvailablePriority(currentLatticeRules)
-	if err != nil {
-		return model.RuleStatus{}, err
+	if ruleToCreate.Priority == nil {
+		priority, err := r.nextAvailablePriority(currentLatticeRules)
+		if err != nil {
+			return model.RuleStatus{}, err
+		}
+		ruleToCreate.Priority = aws.Int64(priority)
 	}
-	ruleToCreate.Priority = aws.Int64(priority)
 
 	cri := vpclattice.CreateRuleInput{
 		Action:             ruleToCreate.Action,

@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-application-networking-k8s/pkg/gateway/utils"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
@@ -171,8 +172,20 @@ func (r *routeReconciler) reconcile(ctx context.Context, req ctrl.Request) error
 		return client.IgnoreNotFound(err)
 	}
 
-	if err = r.client.Get(ctx, req.NamespacedName, route.K8sObject()); err != nil {
-		return client.IgnoreNotFound(err)
+	// Reference original anv1alpha1.HTTPRoute
+	if utils.HasPriorityHeader(route) {
+		originalRoute, err := utils.ConvertHTTPRoute(route)
+		if err != nil {
+			return client.IgnoreNotFound(err)
+		}
+
+		if err = r.client.Get(ctx, req.NamespacedName, originalRoute.(*anv1alpha1.HTTPRoute)); err != nil {
+			return client.IgnoreNotFound(err)
+		}
+	} else {
+		if err = r.client.Get(ctx, req.NamespacedName, route.K8sObject()); err != nil {
+			return client.IgnoreNotFound(err)
+		}
 	}
 
 	if !r.isRouteRelevant(ctx, route) {
@@ -495,9 +508,22 @@ func (r *routeReconciler) validateRoute(ctx context.Context, route core.Route) e
 
 	route.Status().SetParents(parentRefsAcceptedResolvedRefs)
 
-	err = r.client.Status().Update(ctx, route.K8sObject())
-	if err != nil {
-		return fmt.Errorf("validate route: %w", err)
+	// Reference original anv1alpha1.HTTPRoute
+	if utils.HasPriorityHeader(route) {
+		originalRoute, err := utils.ConvertHTTPRoute(route)
+		if err != nil {
+			return client.IgnoreNotFound(err)
+		}
+
+		err = r.client.Status().Update(ctx, originalRoute.(*anv1alpha1.HTTPRoute))
+		if err != nil {
+			return fmt.Errorf("validate route: %w", err)
+		}
+	} else {
+		err = r.client.Status().Update(ctx, route.K8sObject())
+		if err != nil {
+			return fmt.Errorf("validate route: %w", err)
+		}
 	}
 
 	if r.hasNotAcceptedCondition(route) {

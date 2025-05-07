@@ -596,13 +596,6 @@ func TestRouteReconciler_WithPriority_ReconcileCreates(t *testing.T) {
 		[]*vpclattice.GetRuleOutput{}, nil)
 	mockLattice.EXPECT().CreateRuleWithContext(gomock.Any(), gomock.Any()).Return(
 		&vpclattice.CreateRuleOutput{
-			Arn:      aws.String("rule-arn"),
-			Id:       aws.String("rule-id"),
-			Name:     aws.String("rule-name"),
-			Priority: aws.Int64(1),
-		}, nil)
-	mockLattice.EXPECT().CreateRuleWithContext(gomock.Any(), gomock.Any()).Return(
-		&vpclattice.CreateRuleOutput{
 			Arn:      aws.String("rule-arn-2"),
 			Id:       aws.String("rule-id-2"),
 			Name:     aws.String("rule-name-2"),
