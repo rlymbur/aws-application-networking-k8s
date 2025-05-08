@@ -20,6 +20,9 @@ instead AWS Gateway API Controller uses its own version of the resource for the 
 
 ### Annotations
 
+* `application-networking.k8s.aws/federation` (required)  
+  Must be set to `amazon-vpc-lattice` to enable federation functionality. Without this annotation, the ServiceExport resource will not work.
+
 * `application-networking.k8s.aws/port`  
   Represents which port of the exported Service will be used.
   When a comma-separated list of ports is provided, the traffic will be distributed to all ports in the list.
@@ -33,6 +36,7 @@ kind: ServiceExport
 metadata:
   name: service-1
   annotations:
+    application-networking.k8s.aws/federation: "amazon-vpc-lattice"
     application-networking.k8s.aws/port: "9200"
 spec: {}
 ```
