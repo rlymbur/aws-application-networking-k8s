@@ -6,6 +6,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gwv1 "sigs.k8s.io/gateway-api/apis/v1"
+	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 func (env *Framework) NewHttpRoute(parentRefsGateway *gwv1.Gateway, service *corev1.Service, kind string) *gwv1.HTTPRoute {
@@ -49,10 +50,10 @@ func (env *Framework) NewCustomHttpRoute(parentRefsGateway *gwv1.Gateway, servic
 			BackendRefs: []gwv1.HTTPBackendRef{{
 				BackendRef: gwv1.BackendRef{
 					BackendObjectReference: gwv1.BackendObjectReference{
-						Name:      gwv1.ObjectName(service.Name),
-						Namespace: (*gwv1.Namespace)(&service.Namespace),
+						Name:      v1alpha2.ObjectName(service.Name),
+						Namespace: lo.ToPtr(gwv1.Namespace(service.Namespace)),
 						Kind:      lo.ToPtr(gwv1.Kind(kind)),
-						Port:      (*gwv1.PortNumber)(&service.Spec.Ports[0].Port),
+						Port:      lo.ToPtr(gwv1.PortNumber(443)),
 					},
 				},
 			}},
@@ -62,6 +63,7 @@ func (env *Framework) NewCustomHttpRoute(parentRefsGateway *gwv1.Gateway, servic
 	rules = append(rules, rule)
 	parentNS := gwv1.Namespace(parentRefsGateway.Namespace)
 	httpRoute := New(&anv1alpha1.HTTPRoute{
+		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: service.Namespace,
 			Name:      service.Name,
