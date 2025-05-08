@@ -1,6 +1,7 @@
 package test
 
 import (
+	anv1alpha1 "github.com/aws/aws-application-networking-k8s/pkg/apis/applicationnetworking/v1alpha1"
 	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,6 +36,41 @@ func (env *Framework) NewHttpRoute(parentRefsGateway *gwv1.Gateway, service *cor
 					Namespace: &parentNS,
 				}},
 			},
+			Rules: rules,
+		},
+	})
+	return httpRoute
+}
+
+func (env *Framework) NewCustomHttpRoute(parentRefsGateway *gwv1.Gateway, service *corev1.Service, kind string, priority *int32) *anv1alpha1.HTTPRoute {
+	var rules []anv1alpha1.HTTPRouteRule
+	rule := anv1alpha1.HTTPRouteRule{
+		HTTPRouteRule: gwv1.HTTPRouteRule{
+			BackendRefs: []gwv1.HTTPBackendRef{{
+				BackendRef: gwv1.BackendRef{
+					BackendObjectReference: gwv1.BackendObjectReference{
+						Name:      gwv1.ObjectName(service.Name),
+						Namespace: (*gwv1.Namespace)(&service.Namespace),
+						Kind:      lo.ToPtr(gwv1.Kind(kind)),
+						Port:      (*gwv1.PortNumber)(&service.Spec.Ports[0].Port),
+					},
+				},
+			}},
+		},
+		Priority: priority,
+	}
+	rules = append(rules, rule)
+	parentNS := gwv1.Namespace(parentRefsGateway.Namespace)
+	httpRoute := New(&anv1alpha1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: service.Namespace,
+			Name:      service.Name,
+		},
+		Spec: anv1alpha1.HTTPRouteSpec{
+			ParentRefs: []gwv1.ParentReference{{
+				Name:      gwv1.ObjectName(parentRefsGateway.Name),
+				Namespace: &parentNS,
+			}},
 			Rules: rules,
 		},
 	})
