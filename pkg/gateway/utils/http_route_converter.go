@@ -136,6 +136,60 @@ func ConvertCoreToV1Alpha1(coreRoute *core.HTTPRoute) *anv1alpha1.HTTPRoute {
 	return v1alpha1Route
 }
 
+// ConvertV1Alpha1ToGatewayAPI converts an anv1alpha1.HTTPRoute to gwv1.HTTPRoute
+func ConvertV1Alpha1ToGatewayAPI(v1alpha1Route *anv1alpha1.HTTPRoute) *gwv1.HTTPRoute {
+	if v1alpha1Route == nil {
+		return nil
+	}
+
+	gatewayRoute := &gwv1.HTTPRoute{
+		TypeMeta:   v1alpha1Route.TypeMeta,
+		ObjectMeta: v1alpha1Route.ObjectMeta,
+		Status:     v1alpha1Route.Status,
+		Spec: gwv1.HTTPRouteSpec{
+			CommonRouteSpec: gwv1.CommonRouteSpec{
+				ParentRefs: v1alpha1Route.Spec.ParentRefs,
+			},
+			Hostnames: v1alpha1Route.Spec.Hostnames,
+			Rules:     make([]gwv1.HTTPRouteRule, len(v1alpha1Route.Spec.Rules)),
+		},
+	}
+
+	// Convert rules
+	for i, rule := range v1alpha1Route.Spec.Rules {
+		gatewayRoute.Spec.Rules[i] = rule.HTTPRouteRule
+
+		// If priority is set, add it as a header
+		if rule.Priority != nil {
+			headerType := gwv1.HeaderMatchExact
+			priorityHeader := gwv1.HTTPHeaderMatch{
+				Type:  &headerType,
+				Name:  "x-lattice-rule-priority",
+				Value: fmt.Sprintf("%d", *rule.Priority),
+			}
+
+			// If there are no matches, create one with just the priority header
+			if len(gatewayRoute.Spec.Rules[i].Matches) == 0 {
+				gatewayRoute.Spec.Rules[i].Matches = []gwv1.HTTPRouteMatch{
+					{
+						Headers: []gwv1.HTTPHeaderMatch{priorityHeader},
+					},
+				}
+			} else {
+				// Add priority header to each match
+				for j := range gatewayRoute.Spec.Rules[i].Matches {
+					gatewayRoute.Spec.Rules[i].Matches[j].Headers = append(
+						gatewayRoute.Spec.Rules[i].Matches[j].Headers,
+						priorityHeader,
+					)
+				}
+			}
+		}
+	}
+
+	return gatewayRoute
+}
+
 // ConvertV1Alpha1ToCore converts an anv1alpha1.HTTPRoute to core.HTTPRoute
 func ConvertV1Alpha1ToCore(v1alpha1Route *anv1alpha1.HTTPRoute) *core.HTTPRoute {
 	route := gwv1.HTTPRoute{

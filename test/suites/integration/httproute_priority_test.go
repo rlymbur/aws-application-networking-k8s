@@ -3,6 +3,7 @@ package integration
 import (
 	"fmt"
 	"github.com/aws/aws-application-networking-k8s/pkg/gateway/utils"
+	"github.com/aws/aws-application-networking-k8s/pkg/model/core"
 	"github.com/aws/aws-sdk-go/service/vpclattice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -33,7 +34,9 @@ var _ = Describe("HTTPRoute Priority", Ordered, func() {
 	})
 
 	It("Verify Lattice resource", func() {
-		route := utils.ConvertV1Alpha1ToCore(httpRoute)
+		coreRoute := utils.ConvertV1Alpha1ToGatewayAPI(httpRoute)
+		route, _ := core.NewRoute(coreRoute)
+
 		vpcLatticeService := testFramework.GetVpcLatticeService(ctx, route)
 		fmt.Printf("vpcLatticeService: %v \n", vpcLatticeService)
 		tgSummary := testFramework.GetTargetGroup(ctx, service)
