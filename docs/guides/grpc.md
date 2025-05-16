@@ -107,3 +107,104 @@ Greeting: Hello world
 ```
 
 This confirms that our gRPC request was successfully routed through VPC Lattice and processed by our `greeter-grpc-server`.
+
+## Exporting gRPC Services with ServiceExport
+
+You can use ServiceExport to expose your gRPC services to other clusters through VPC Lattice. When you export a gRPC service, the controller creates two target groups:
+1. An HTTP target group with HTTP1 protocol version for HTTP traffic
+2. A gRPC target group with GRPC protocol version for gRPC traffic
+
+Here's an example of how to export a gRPC service:
+
+1. *Deploy your gRPC Service*: First, deploy your gRPC service and its Kubernetes service:
+   ```yaml
+   apiVersion: apps/v1
+   kind: Deployment
+   metadata:
+     name: grpc-server
+     namespace: default
+   spec:
+     replicas: 1
+     selector:
+       matchLabels:
+         app: grpc-server
+     template:
+       metadata:
+         labels:
+           app: grpc-server
+       spec:
+         containers:
+         - name: grpc-server
+           image: your-grpc-server:latest
+           ports:
+           - name: grpc
+             containerPort: 50051
+   ---
+   apiVersion: v1
+   kind: Service
+   metadata:
+     name: grpc-server
+     namespace: default
+   spec:
+     ports:
+     - name: grpc
+       port: 50051
+       targetPort: grpc
+     selector:
+       app: grpc-server
+   ```
+
+2. *Create a TargetGroupPolicy*: Configure health checks and protocol settings for your gRPC service:
+   ```yaml
+   apiVersion: application-networking.k8s.aws/v1alpha1
+   kind: TargetGroupPolicy
+   metadata:
+     name: grpc-policy
+     namespace: default
+   spec:
+     targetRef:
+       group: application-networking.k8s.aws
+       kind: ServiceExport
+       name: grpc-server
+     protocol: HTTP
+     protocolVersion: GRPC
+     healthCheck:
+       enabled: true
+       protocol: HTTP
+       protocolVersion: GRPC
+       port: 50051
+   ```
+
+3. *Export the Service*: Create a ServiceExport to expose your gRPC service:
+   ```yaml
+   apiVersion: application-networking.k8s.aws/v1alpha1
+   kind: ServiceExport
+   metadata:
+     name: grpc-server
+     namespace: default
+   ```
+
+The controller will create two target groups for your service:
+- An HTTP target group for handling HTTP traffic (protocol: HTTP, protocolVersion: HTTP1)
+- A gRPC target group for handling gRPC traffic (protocol: HTTP, protocolVersion: GRPC)
+
+You can then use GRPCRoute or HTTPRoute to route traffic to your exported service. For example:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: GRPCRoute
+metadata:
+  name: grpc-route
+  namespace: default
+spec:
+  parentRefs:
+  - name: my-gateway
+  rules:
+  - backendRefs:
+    - group: application-networking.k8s.aws
+      kind: ServiceImport
+      name: grpc-server
+      port: 50051
+```
+
+This setup allows your gRPC service to handle both HTTP and gRPC traffic through VPC Lattice, with appropriate health checks and protocol settings for each type of traffic.

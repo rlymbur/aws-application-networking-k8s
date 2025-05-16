@@ -9,11 +9,8 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/aws/aws-application-networking-k8s/test/pkg/test"
-	gwv1 "sigs.k8s.io/gateway-api/apis/v1"
-	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	anv1alpha1 "github.com/aws/aws-application-networking-k8s/pkg/apis/applicationnetworking/v1alpha1"
 	model "github.com/aws/aws-application-networking-k8s/pkg/model/lattice"
@@ -30,7 +27,7 @@ var _ = Describe("GRPC ServiceExport Test", Ordered, func() {
 	It("Create k8s resources", func() {
 		// Create GRPC service and deployment
 		grpcDeployment, grpcSvc = testFramework.NewGrpcApp(test.GrpcAppOptions{Name: "my-grpc-1", Namespace: k8snamespace})
-		policy = createGRPCTargetGroupPolicy(grpcSvc)
+		policy = test.CreateGRPCTargetGroupPolicy(grpcSvc)
 		testFramework.ExpectCreated(ctx, policy)
 		serviceExport = testFramework.CreateServiceExport(grpcSvc)
 		testFramework.ExpectCreated(ctx, serviceExport)
@@ -106,34 +103,3 @@ var _ = Describe("GRPC ServiceExport Test", Ordered, func() {
 		)
 	})
 })
-
-func createGRPCTargetGroupPolicy(
-	service *corev1.Service,
-) *anv1alpha1.TargetGroupPolicy {
-	healthCheckProtocol := anv1alpha1.HealthCheckProtocol("HTTP")
-	healthCheckProtocolVersion := anv1alpha1.HealthCheckProtocolVersion("HTTP2")
-	return &anv1alpha1.TargetGroupPolicy{
-		TypeMeta: metav1.TypeMeta{
-			Kind: "TargetGroupPolicy",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: service.Namespace,
-			Name:      "grpc-policy",
-		},
-		Spec: anv1alpha1.TargetGroupPolicySpec{
-			TargetRef: &v1alpha2.NamespacedPolicyTargetReference{
-				Group: "application-networking.k8s.aws",
-				Kind:  gwv1.Kind("ServiceExport"),
-				Name:  gwv1.ObjectName(service.Name),
-			},
-			Protocol:        aws.String("HTTP"),
-			ProtocolVersion: aws.String("HTTP2"),
-			HealthCheck: &anv1alpha1.HealthCheckConfig{
-				Enabled:         aws.Bool(true),
-				Protocol:        &healthCheckProtocol,
-				ProtocolVersion: &healthCheckProtocolVersion,
-				Port:            aws.Int64(50051),
-			},
-		},
-	}
-}

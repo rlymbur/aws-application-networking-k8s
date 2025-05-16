@@ -33,11 +33,12 @@ However, the policy will not take effect unless the target is valid.
 - Attaching TargetGroupPolicy to an existing ServiceExport will result in a replacement of VPC Lattice TargetGroup resource, except for health check updates.
 - Removing TargetGroupPolicy of a resource will roll back protocol configuration to default setting. (HTTP1/HTTP plaintext)
 
-## Example Configuration
+## Example Configurations
 
-This will enable HTTPS traffic between the gateway and Kubernetes service, with customized health check configuration.
+### HTTPS Configuration
+This example enables HTTPS traffic between the gateway and Kubernetes service, with customized health check configuration:
 
-```
+```yaml
 apiVersion: application-networking.k8s.aws/v1alpha1
 kind: TargetGroupPolicy
 metadata:
@@ -60,4 +61,27 @@ spec:
         protocol: HTTP
         protocolVersion: HTTP1
         statusMatch: "200"
+```
+
+### GRPC Configuration
+This example configures a target group for GRPC traffic with appropriate health checks:
+
+```yaml
+apiVersion: application-networking.k8s.aws/v1alpha1
+kind: TargetGroupPolicy
+metadata:
+    name: grpc-policy
+spec:
+    targetRef:
+        group: application-networking.k8s.aws
+        kind: ServiceExport
+        name: grpc-service
+    protocol: HTTP
+    protocolVersion: GRPC
+    healthCheck:
+        enabled: true
+        protocol: HTTP
+        protocolVersion: GRPC
+        port: 50051
+        path: "/grpc.health.v1.Health/Check"  # Standard GRPC health check endpoint
 ```
