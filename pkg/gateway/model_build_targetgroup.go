@@ -40,7 +40,7 @@ type SvcExportTargetGroupModelBuilder interface {
 	Build(ctx context.Context, svcExport *anv1alpha1.ServiceExport) (core.Stack, error)
 
 	// used for reconciliation of existing target groups against a service export object
-	BuildTargetGroup(ctx context.Context, svcExport *anv1alpha1.ServiceExport) (*model.TargetGroup, error)
+	BuildTargetGroup(ctx context.Context, svcExport *anv1alpha1.ServiceExport) (*model.TargetGroup, *model.TargetGroup, error)
 }
 
 type SvcExportTargetGroupBuilder struct {
@@ -87,7 +87,7 @@ func (b *SvcExportTargetGroupBuilder) Build(
 	return task.stack, nil
 }
 
-func (b *SvcExportTargetGroupBuilder) BuildTargetGroup(ctx context.Context, svcExport *anv1alpha1.ServiceExport) (*model.TargetGroup, error) {
+func (b *SvcExportTargetGroupBuilder) BuildTargetGroup(ctx context.Context, svcExport *anv1alpha1.ServiceExport) (*model.TargetGroup, *model.TargetGroup, error) {
 	stack := core.NewDefaultStack(core.StackID(k8s.NamespacedName(svcExport)))
 
 	task := &svcExportTargetGroupModelBuildTask{
@@ -98,20 +98,25 @@ func (b *SvcExportTargetGroupBuilder) BuildTargetGroup(ctx context.Context, svcE
 		tgp:           policy.NewTargetGroupPolicyHandler(b.log, b.client),
 	}
 
-	return task.buildTargetGroup(ctx)
+	return task.buildTargetGroups(ctx)
 }
 
 func (t *svcExportTargetGroupModelBuildTask) run(ctx context.Context) error {
-	tg, err := t.buildTargetGroup(ctx)
+	httpTG, grpcTG, err := t.buildTargetGroups(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to build target group for service export %s-%s due to %w",
+		return fmt.Errorf("failed to build target groups for service export %s-%s due to %w",
 			t.serviceExport.Name, t.serviceExport.Namespace, err)
 	}
 
-	if !tg.IsDeleted {
-		err = t.buildTargets(ctx, tg.ID())
-		if err != nil {
-			t.log.Debugf(ctx, "Failed to build targets for service export %s-%s due to %s",
+	if !httpTG.IsDeleted {
+		// Build targets for both HTTP and GRPC target groups
+		if err = t.buildTargets(ctx, httpTG.ID()); err != nil {
+			t.log.Debugf(ctx, "Failed to build HTTP targets for service export %s-%s due to %s",
+				t.serviceExport.Name, t.serviceExport.Namespace, err)
+			return err
+		}
+		if err = t.buildTargets(ctx, grpcTG.ID()); err != nil {
+			t.log.Debugf(ctx, "Failed to build GRPC targets for service export %s-%s due to %s",
 				t.serviceExport.Name, t.serviceExport.Namespace, err)
 			return err
 		}
@@ -129,7 +134,7 @@ func (t *svcExportTargetGroupModelBuildTask) buildTargets(ctx context.Context, s
 	return nil
 }
 
-func (t *svcExportTargetGroupModelBuildTask) buildTargetGroup(ctx context.Context) (*model.TargetGroup, error) {
+func (t *svcExportTargetGroupModelBuildTask) buildTargetGroups(ctx context.Context) (*model.TargetGroup, *model.TargetGroup, error) {
 	svc := &corev1.Service{}
 	noSvcFoundAndDeleting := false
 	if err := t.client.Get(ctx, k8s.NamespacedName(t.serviceExport), svc); err != nil {
@@ -137,7 +142,7 @@ func (t *svcExportTargetGroupModelBuildTask) buildTargetGroup(ctx context.Contex
 			// if we're deleting, it's OK if the service isn't there
 			noSvcFoundAndDeleting = true
 		} else { // either it's some other error or we aren't deleting
-			return nil, fmt.Errorf("failed to find corresponding k8sService %s, error :%w ",
+			return nil, nil, fmt.Errorf("failed to find corresponding k8sService %s, error :%w ",
 				k8s.NamespacedName(t.serviceExport), err)
 		}
 	}
@@ -149,42 +154,72 @@ func (t *svcExportTargetGroupModelBuildTask) buildTargetGroup(ctx context.Contex
 	} else {
 		ipAddressType, err = buildTargetGroupIpAddressType(svc)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	tgp, err := t.tgp.ObjResolvedPolicy(ctx, t.serviceExport)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	protocol, protocolVersion, healthCheckConfig, err := parseTargetGroupConfig(tgp)
+	// For ServiceExport, we create both HTTP and GRPC target groups
+	// First create HTTP target group
+	httpSpec := model.TargetGroupSpec{
+		Type:            model.TargetGroupTypeIP,
+		Port:            80,
+		Protocol:        vpclattice.TargetGroupProtocolHttp,
+		ProtocolVersion: vpclattice.TargetGroupProtocolVersionHttp1,
+		IpAddressType:   ipAddressType,
+	}
+	httpSpec.VpcId = config.VpcID
+	httpSpec.K8SSourceType = model.SourceTypeSvcExport
+	httpSpec.K8SClusterName = config.ClusterName
+	httpSpec.K8SServiceName = t.serviceExport.Name
+	httpSpec.K8SServiceNamespace = t.serviceExport.Namespace
+	httpSpec.K8SProtocolVersion = vpclattice.TargetGroupProtocolVersionHttp1
+
+	// Apply any custom health check config from target group policy
+	_, _, healthCheckConfig, err := parseTargetGroupConfig(tgp)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	httpSpec.HealthCheckConfig = healthCheckConfig
 
-	spec := model.TargetGroupSpec{
-		Type:              model.TargetGroupTypeIP,
-		Port:              80,
-		Protocol:          protocol,
-		ProtocolVersion:   protocolVersion,
-		IpAddressType:     ipAddressType,
-		HealthCheckConfig: healthCheckConfig,
-	}
-	spec.VpcId = config.VpcID
-	spec.K8SSourceType = model.SourceTypeSvcExport
-	spec.K8SClusterName = config.ClusterName
-	spec.K8SServiceName = t.serviceExport.Name
-	spec.K8SServiceNamespace = t.serviceExport.Namespace
-	spec.K8SProtocolVersion = protocolVersion
-
-	stackTG, err := model.NewTargetGroup(t.stack, spec)
+	stackTG, err := model.NewTargetGroup(t.stack, httpSpec)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	stackTG.IsDeleted = !t.serviceExport.DeletionTimestamp.IsZero()
-	return stackTG, nil
+	// Then create GRPC target group
+	grpcSpec := model.TargetGroupSpec{
+		Type:            model.TargetGroupTypeIP,
+		Port:            80,
+		Protocol:        vpclattice.TargetGroupProtocolHttp,
+		ProtocolVersion: vpclattice.TargetGroupProtocolVersionGrpc,
+		IpAddressType:   ipAddressType,
+	}
+	grpcSpec.VpcId = config.VpcID
+	grpcSpec.K8SSourceType = model.SourceTypeSvcExport
+	grpcSpec.K8SClusterName = config.ClusterName
+	grpcSpec.K8SServiceName = t.serviceExport.Name
+	grpcSpec.K8SServiceNamespace = t.serviceExport.Namespace
+	grpcSpec.K8SProtocolVersion = vpclattice.TargetGroupProtocolVersionGrpc
+
+	// Apply any custom health check config from target group policy
+	grpcSpec.HealthCheckConfig = healthCheckConfig
+
+	grpcStackTG, err := model.NewTargetGroup(t.stack, grpcSpec)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Both target groups share the same deletion status
+	isDeleted := !t.serviceExport.DeletionTimestamp.IsZero()
+	stackTG.IsDeleted = isDeleted
+	grpcStackTG.IsDeleted = isDeleted
+
+	return stackTG, grpcStackTG, nil
 }
 
 type BackendRefTargetGroupModelBuilder interface {

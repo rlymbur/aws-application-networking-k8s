@@ -53,12 +53,13 @@ func (mr *MockSvcExportTargetGroupModelBuilderMockRecorder) Build(arg0, arg1 int
 }
 
 // BuildTargetGroup mocks base method.
-func (m *MockSvcExportTargetGroupModelBuilder) BuildTargetGroup(arg0 context.Context, arg1 *v1alpha1.ServiceExport) (*lattice.TargetGroup, error) {
+func (m *MockSvcExportTargetGroupModelBuilder) BuildTargetGroup(arg0 context.Context, arg1 *v1alpha1.ServiceExport) (*lattice.TargetGroup, *lattice.TargetGroup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BuildTargetGroup", arg0, arg1)
 	ret0, _ := ret[0].(*lattice.TargetGroup)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(*lattice.TargetGroup)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // BuildTargetGroup indicates an expected call of BuildTargetGroup.

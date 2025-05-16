@@ -234,21 +234,26 @@ func (t *TargetGroupSynthesizer) shouldDeleteSvcExportTg(
 
 	// now we get to the tricky business of seeing if our unused target group actually matches
 	// the current state of the service and service export - the most correct way to do this is to
-	// reconstruct the target group spec from the service export itself, then compare fields
-	modelTg, err := t.svcExportTgBuilder.BuildTargetGroup(ctx, svcExport)
+	// reconstruct the target group specs from the service export itself, then compare fields
+	httpTg, grpcTg, err := t.svcExportTgBuilder.BuildTargetGroup(ctx, svcExport)
 	if err != nil {
 		t.log.Infof(ctx, "Received error building svc export target group model %s", err)
 		return false
 	}
 
-	// the main identifiers are validated, just need to check the other essentials.
-	// protocolVersion is not in TG summary so we are bringing it from tags.
-	if int64(modelTg.Spec.Port) != aws.Int64Value(latticeTg.tgSummary.Port) ||
-		modelTg.Spec.Protocol != aws.StringValue(latticeTg.tgSummary.Protocol) ||
-		modelTg.Spec.ProtocolVersion != tagFields.K8SProtocolVersion ||
-		modelTg.Spec.IpAddressType != aws.StringValue(latticeTg.tgSummary.IpAddressType) {
+	// Check if this target group matches either the HTTP or GRPC model
+	isHttpMatch := int64(httpTg.Spec.Port) == aws.Int64Value(latticeTg.tgSummary.Port) &&
+		httpTg.Spec.Protocol == aws.StringValue(latticeTg.tgSummary.Protocol) &&
+		httpTg.Spec.ProtocolVersion == tagFields.K8SProtocolVersion &&
+		httpTg.Spec.IpAddressType == aws.StringValue(latticeTg.tgSummary.IpAddressType)
 
-		// one or more immutable fields differ from the source, so the TG is out of date
+	isGrpcMatch := int64(grpcTg.Spec.Port) == aws.Int64Value(latticeTg.tgSummary.Port) &&
+		grpcTg.Spec.Protocol == aws.StringValue(latticeTg.tgSummary.Protocol) &&
+		grpcTg.Spec.ProtocolVersion == tagFields.K8SProtocolVersion &&
+		grpcTg.Spec.IpAddressType == aws.StringValue(latticeTg.tgSummary.IpAddressType)
+
+	if !isHttpMatch && !isGrpcMatch {
+		// Target group doesn't match either HTTP or GRPC model
 		t.log.Infof(ctx, "Will delete TargetGroup %s (%s) - fields differ from source service/service export",
 			*latticeTg.tgSummary.Arn, *latticeTg.tgSummary.Name)
 		return true

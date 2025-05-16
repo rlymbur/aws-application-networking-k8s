@@ -237,35 +237,45 @@ func Test_TGModelByServiceExportBuild(t *testing.T) {
 			var resTargetGroups []*model.TargetGroup
 			err = stack.ListResources(&resTargetGroups)
 			assert.Nil(t, err)
-			assert.Equal(t, 1, len(resTargetGroups))
+			assert.Equal(t, 2, len(resTargetGroups))
 
-			stackTg := resTargetGroups[0]
-			spec := model.TargetGroupSpec{}
-			spec.K8SServiceName = tt.svcExport.Name
-			spec.K8SServiceNamespace = tt.svcExport.Namespace
-			tgNamePrefix := model.TgNamePrefix(spec)
-			generatedName := model.GenerateTgName(stackTg.Spec)
-			assert.True(t, strings.HasPrefix(generatedName, tgNamePrefix))
+			// HTTP target group
+			httpTg := resTargetGroups[0]
+			// GRPC target group
+			grpcTg := resTargetGroups[1]
+			// Verify both target groups
+			for _, tg := range []*model.TargetGroup{httpTg, grpcTg} {
+				spec := model.TargetGroupSpec{}
+				spec.K8SServiceName = tt.svcExport.Name
+				spec.K8SServiceNamespace = tt.svcExport.Namespace
+				tgNamePrefix := model.TgNamePrefix(spec)
+				generatedName := model.GenerateTgName(tg.Spec)
+				assert.True(t, strings.HasPrefix(generatedName, tgNamePrefix))
 
-			if tt.wantIsDeleted {
-				assert.True(t, stackTg.IsDeleted)
-				return
+				if tt.wantIsDeleted {
+					assert.True(t, tg.IsDeleted)
+					continue
+				}
+				assert.False(t, tg.IsDeleted)
+
+				if tt.wantIPv6TargetGroup {
+					assert.Equal(t, vpclattice.IpAddressTypeIpv6, tg.Spec.IpAddressType)
+				} else {
+					assert.Equal(t, vpclattice.IpAddressTypeIpv4, tg.Spec.IpAddressType)
+				}
+
+				assert.Equal(t, config.ClusterName, tg.Spec.K8SClusterName)
+				assert.Equal(t, config.VpcID, tg.Spec.VpcId)
+				assert.Equal(t, model.SourceTypeSvcExport, tg.Spec.K8SSourceType)
+				assert.Equal(t, tt.svc.Name, tg.Spec.K8SServiceName)
+				assert.Equal(t, tt.svc.Namespace, tg.Spec.K8SServiceNamespace)
+				assert.Equal(t, "", tg.Spec.K8SRouteName)
+				assert.Equal(t, "", tg.Spec.K8SRouteNamespace)
 			}
-			assert.False(t, stackTg.IsDeleted)
 
-			if tt.wantIPv6TargetGroup {
-				assert.Equal(t, vpclattice.IpAddressTypeIpv6, stackTg.Spec.IpAddressType)
-			} else {
-				assert.Equal(t, vpclattice.IpAddressTypeIpv4, stackTg.Spec.IpAddressType)
-			}
-
-			assert.Equal(t, config.ClusterName, stackTg.Spec.K8SClusterName)
-			assert.Equal(t, config.VpcID, stackTg.Spec.VpcId)
-			assert.Equal(t, model.SourceTypeSvcExport, stackTg.Spec.K8SSourceType)
-			assert.Equal(t, tt.svc.Name, stackTg.Spec.K8SServiceName)
-			assert.Equal(t, tt.svc.Namespace, stackTg.Spec.K8SServiceNamespace)
-			assert.Equal(t, "", stackTg.Spec.K8SRouteName)
-			assert.Equal(t, "", stackTg.Spec.K8SRouteNamespace)
+			// Verify protocol versions
+			assert.Equal(t, vpclattice.TargetGroupProtocolVersionHttp1, httpTg.Spec.ProtocolVersion)
+			assert.Equal(t, vpclattice.TargetGroupProtocolVersionGrpc, grpcTg.Spec.ProtocolVersion)
 		})
 	}
 }

@@ -242,7 +242,7 @@ func Test_DoNotDeleteCases(t *testing.T) {
 	svcExportModelTg := baseModelTg
 	svcExportModelTg.Spec.K8SSourceType = model.SourceTypeSvcExport
 
-	mockSvcExportTgBuilder.EXPECT().BuildTargetGroup(ctx, gomock.Any()).Return(&svcExportModelTg, nil)
+	mockSvcExportTgBuilder.EXPECT().BuildTargetGroup(ctx, gomock.Any()).Return(&svcExportModelTg, &svcExportModelTg, nil)
 
 	stack := core.NewDefaultStack(core.StackID{Name: "foo", Namespace: "bar"})
 	svcModelTg := baseModelTg
@@ -351,7 +351,7 @@ func Test_DeleteServiceExport_DeleteCases(t *testing.T) {
 			},
 		)
 
-		mockSvcExportTgBuilder.EXPECT().BuildTargetGroup(ctx, gomock.Any()).Return(&modelTg, nil)
+		mockSvcExportTgBuilder.EXPECT().BuildTargetGroup(ctx, gomock.Any()).Return(&modelTg, &modelTg, nil)
 
 		mockTGManager.EXPECT().List(ctx).Return(deleteTgs, nil)
 		mockTGManager.EXPECT().Delete(ctx, gomock.Any()).Return(nil)
