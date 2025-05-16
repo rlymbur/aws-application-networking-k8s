@@ -9,35 +9,121 @@ import (
 )
 
 type GrpcAppOptions struct {
-	AppName   string
+	AppName   string // Used by existing tests
+	Name      string // Used by new tests
 	Namespace string
+	Replicas  *int32
+	Port      *int32
 }
 
-// https://github.com/moul/grpcbin
-func (env *Framework) NewGrpcBin(options GrpcAppOptions) (*appsv1.Deployment, *v1.Service) {
+func (o *GrpcAppOptions) GetName() string {
+	if o.Name != "" {
+		return o.Name
+	}
+	return o.AppName
+}
 
-	deployment := New(&appsv1.Deployment{
+func (o *GrpcAppOptions) GetPort() int32 {
+	if o.Port == nil {
+		return 50051 // Default GRPC port
+	}
+	return *o.Port
+}
+
+func (o *GrpcAppOptions) GetReplicas() *int32 {
+	if o.Replicas == nil {
+		return lo.ToPtr(int32(1))
+	}
+	return o.Replicas
+}
+
+// NewGrpcApp creates a new GRPC application using grpcbin image
+func (env *Framework) NewGrpcApp(options GrpcAppOptions) (*appsv1.Deployment, *v1.Service) {
+	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
+			Name:      options.GetName(),
 			Namespace: options.Namespace,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: lo.ToPtr(int32(1)),
+			Replicas: options.GetReplicas(),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": options.AppName,
+					"app":          options.GetName(),
+					DiscoveryLabel: "true",
 				},
 			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace: options.Namespace,
 					Labels: map[string]string{
-						"app":          options.AppName,
+						"app":          options.GetName(),
+						DiscoveryLabel: "true",
+					},
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name:  "app",
+							Image: "public.ecr.aws/a0j4q9e4/grpcbin:latest",
+							Ports: []v1.ContainerPort{
+								{
+									Name:          "grpc",
+									ContainerPort: options.GetPort(),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	service := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      options.GetName(),
+			Namespace: options.Namespace,
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					Name:       "grpc",
+					Port:       options.GetPort(),
+					TargetPort: intstr.FromInt(int(options.GetPort())),
+				},
+			},
+			Selector: map[string]string{
+				"app": options.GetName(),
+			},
+		},
+	}
+
+	return deployment, service
+}
+
+// NewGrpcBin creates a new GRPC application using moul/grpcbin image
+func (env *Framework) NewGrpcBin(options GrpcAppOptions) (*appsv1.Deployment, *v1.Service) {
+
+	deployment := New(&appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      options.GetName(),
+			Namespace: options.Namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: options.GetReplicas(),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": options.GetName(),
+				},
+			},
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app":          options.GetName(),
 						DiscoveryLabel: "true",
 					},
 				},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{{
-						Name:  options.AppName,
+						Name:  options.GetName(),
 						Image: "moul/grpcbin:latest",
 					}},
 				},
@@ -50,11 +136,12 @@ func (env *Framework) NewGrpcBin(options GrpcAppOptions) (*appsv1.Deployment, *v
 			Kind: "Service",
 		},
 		ObjectMeta: metav1.ObjectMeta{
+			Name:      options.GetName(),
 			Namespace: options.Namespace,
 		},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{
-				"app": options.AppName,
+				"app": options.GetName(),
 			},
 			Ports: []v1.ServicePort{
 				{
