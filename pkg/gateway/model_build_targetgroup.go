@@ -163,8 +163,37 @@ func (t *svcExportTargetGroupModelBuildTask) buildTargetGroups(ctx context.Conte
 		return nil, nil, err
 	}
 
-	// For ServiceExport, we create both HTTP and GRPC target groups
-	// First create HTTP target group
+	// Get protocol and health check config from target group policy
+	protocol, _, healthCheckConfig, err := parseTargetGroupConfig(tgp)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// For TCP protocol (TLS routes), create a single TCP target group
+	if protocol == vpclattice.TargetGroupProtocolTcp {
+		tcpSpec := model.TargetGroupSpec{
+			Type:          model.TargetGroupTypeIP,
+			Port:          80,
+			Protocol:      vpclattice.TargetGroupProtocolTcp,
+			IpAddressType: ipAddressType,
+		}
+		tcpSpec.VpcId = config.VpcID
+		tcpSpec.K8SSourceType = model.SourceTypeSvcExport
+		tcpSpec.K8SClusterName = config.ClusterName
+		tcpSpec.K8SServiceName = t.serviceExport.Name
+		tcpSpec.K8SServiceNamespace = t.serviceExport.Namespace
+		tcpSpec.HealthCheckConfig = healthCheckConfig
+
+		stackTG, err := model.NewTargetGroup(t.stack, tcpSpec)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		stackTG.IsDeleted = !t.serviceExport.DeletionTimestamp.IsZero()
+		return stackTG, stackTG, nil // Return same TG twice since we only create one
+	}
+
+	// For HTTP/GRPC protocols, create both HTTP and GRPC target groups
 	httpSpec := model.TargetGroupSpec{
 		Type:            model.TargetGroupTypeIP,
 		Port:            80,
@@ -178,12 +207,6 @@ func (t *svcExportTargetGroupModelBuildTask) buildTargetGroups(ctx context.Conte
 	httpSpec.K8SServiceName = t.serviceExport.Name
 	httpSpec.K8SServiceNamespace = t.serviceExport.Namespace
 	httpSpec.K8SProtocolVersion = vpclattice.TargetGroupProtocolVersionHttp1
-
-	// Apply any custom health check config from target group policy
-	_, _, healthCheckConfig, err := parseTargetGroupConfig(tgp)
-	if err != nil {
-		return nil, nil, err
-	}
 	httpSpec.HealthCheckConfig = healthCheckConfig
 
 	stackTG, err := model.NewTargetGroup(t.stack, httpSpec)
@@ -191,7 +214,6 @@ func (t *svcExportTargetGroupModelBuildTask) buildTargetGroups(ctx context.Conte
 		return nil, nil, err
 	}
 
-	// Then create GRPC target group
 	grpcSpec := model.TargetGroupSpec{
 		Type:            model.TargetGroupTypeIP,
 		Port:            80,
@@ -205,8 +227,6 @@ func (t *svcExportTargetGroupModelBuildTask) buildTargetGroups(ctx context.Conte
 	grpcSpec.K8SServiceName = t.serviceExport.Name
 	grpcSpec.K8SServiceNamespace = t.serviceExport.Namespace
 	grpcSpec.K8SProtocolVersion = vpclattice.TargetGroupProtocolVersionGrpc
-
-	// Apply any custom health check config from target group policy
 	grpcSpec.HealthCheckConfig = healthCheckConfig
 
 	grpcStackTG, err := model.NewTargetGroup(t.stack, grpcSpec)
