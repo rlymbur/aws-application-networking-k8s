@@ -38,6 +38,37 @@ spec:
             type: string
           metadata:
             type: object
+          spec:
+            description: spec defines the desired state of an exported service.
+            properties:
+              exportedPorts:
+                description: |-
+                  exportedPorts defines which ports to export and their route types.
+                  If not specified, all ports will be exported as HTTP target groups
+                  for backward compatibility.
+                items:
+                  description: ExportedPort defines a port to export and its route
+                    type
+                  properties:
+                    port:
+                      description: port is the port number to export
+                      format: int32
+                      type: integer
+                    routeType:
+                      description: |-
+                        routeType defines the type of route this port supports.
+                        Valid values are "HTTP", "GRPC", and "TLS".
+                      enum:
+                      - HTTP
+                      - GRPC
+                      - TLS
+                      type: string
+                  required:
+                  - port
+                  - routeType
+                  type: object
+                type: array
+            type: object
           status:
             description: |-
               status describes the current state of an exported service.

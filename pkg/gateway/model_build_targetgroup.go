@@ -163,37 +163,64 @@ func (t *svcExportTargetGroupModelBuildTask) buildTargetGroups(ctx context.Conte
 		return nil, nil, err
 	}
 
-	// Get protocol and health check config from target group policy
-	protocol, _, healthCheckConfig, err := parseTargetGroupConfig(tgp)
+	// Get health check config from target group policy
+	_, _, healthCheckConfig, err := parseTargetGroupConfig(tgp)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// For TCP protocol (TLS routes), create a single TCP target group
-	if protocol == vpclattice.TargetGroupProtocolTcp {
-		tcpSpec := model.TargetGroupSpec{
-			Type:          model.TargetGroupTypeIP,
-			Port:          80,
-			Protocol:      vpclattice.TargetGroupProtocolTcp,
-			IpAddressType: ipAddressType,
-		}
-		tcpSpec.VpcId = config.VpcID
-		tcpSpec.K8SSourceType = model.SourceTypeSvcExport
-		tcpSpec.K8SClusterName = config.ClusterName
-		tcpSpec.K8SServiceName = t.serviceExport.Name
-		tcpSpec.K8SServiceNamespace = t.serviceExport.Namespace
-		tcpSpec.HealthCheckConfig = healthCheckConfig
+	// If exportedPorts is specified, create target groups based on the configuration
+	if len(t.serviceExport.Spec.ExportedPorts) > 0 {
+		var firstTG, secondTG *model.TargetGroup
+		for _, exportedPort := range t.serviceExport.Spec.ExportedPorts {
+			spec := model.TargetGroupSpec{
+				Type:          model.TargetGroupTypeIP,
+				Port:          exportedPort.Port,
+				IpAddressType: ipAddressType,
+			}
+			spec.VpcId = config.VpcID
+			spec.K8SSourceType = model.SourceTypeSvcExport
+			spec.K8SClusterName = config.ClusterName
+			spec.K8SServiceName = t.serviceExport.Name
+			spec.K8SServiceNamespace = t.serviceExport.Namespace
+			spec.HealthCheckConfig = healthCheckConfig
 
-		stackTG, err := model.NewTargetGroup(t.stack, tcpSpec)
-		if err != nil {
-			return nil, nil, err
+			switch exportedPort.RouteType {
+			case "HTTP":
+				spec.Protocol = vpclattice.TargetGroupProtocolHttp
+				spec.ProtocolVersion = vpclattice.TargetGroupProtocolVersionHttp1
+				spec.K8SProtocolVersion = vpclattice.TargetGroupProtocolVersionHttp1
+			case "GRPC":
+				spec.Protocol = vpclattice.TargetGroupProtocolHttp
+				spec.ProtocolVersion = vpclattice.TargetGroupProtocolVersionGrpc
+				spec.K8SProtocolVersion = vpclattice.TargetGroupProtocolVersionGrpc
+			case "TLS":
+				spec.Protocol = vpclattice.TargetGroupProtocolTcp
+			default:
+				return nil, nil, fmt.Errorf("unsupported route type: %s", exportedPort.RouteType)
+			}
+
+			stackTG, err := model.NewTargetGroup(t.stack, spec)
+			if err != nil {
+				return nil, nil, err
+			}
+			stackTG.IsDeleted = !t.serviceExport.DeletionTimestamp.IsZero()
+
+			if firstTG == nil {
+				firstTG = stackTG
+			} else if secondTG == nil {
+				secondTG = stackTG
+			}
 		}
 
-		stackTG.IsDeleted = !t.serviceExport.DeletionTimestamp.IsZero()
-		return stackTG, stackTG, nil // Return same TG twice since we only create one
+		// If only one target group was created, return it twice
+		if secondTG == nil {
+			secondTG = firstTG
+		}
+		return firstTG, secondTG, nil
 	}
 
-	// For HTTP/GRPC protocols, create both HTTP and GRPC target groups
+	// For backward compatibility, if no exportedPorts specified, create both HTTP and GRPC target groups
 	httpSpec := model.TargetGroupSpec{
 		Type:            model.TargetGroupTypeIP,
 		Port:            80,

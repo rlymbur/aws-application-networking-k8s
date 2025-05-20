@@ -110,9 +110,16 @@ This confirms that our gRPC request was successfully routed through VPC Lattice 
 
 ## Exporting gRPC Services with ServiceExport
 
-You can use ServiceExport to expose your gRPC services to other clusters through VPC Lattice. When you export a gRPC service, the controller creates two target groups:
-1. An HTTP target group with HTTP1 protocol version for HTTP traffic
-2. A gRPC target group with GRPC protocol version for gRPC traffic
+You can use ServiceExport to expose your gRPC services to other clusters through VPC Lattice. The ServiceExport spec allows you to explicitly define which ports to export and their route types. For gRPC services, you should specify the `GRPC` route type:
+
+```yaml
+spec:
+  exportedPorts:
+  - port: 50051
+    routeType: GRPC
+```
+
+This tells the controller to create a gRPC target group specifically configured for gRPC traffic. You can also export multiple ports with different route types if your service supports multiple protocols.
 
 Here's an example of how to export a gRPC service:
 
@@ -182,11 +189,13 @@ Here's an example of how to export a gRPC service:
    metadata:
      name: grpc-server
      namespace: default
+   spec:
+     exportedPorts:
+     - port: 50051
+       routeType: GRPC
    ```
 
-The controller will create two target groups for your service:
-- An HTTP target group for handling HTTP traffic (protocol: HTTP, protocolVersion: HTTP1)
-- A gRPC target group for handling gRPC traffic (protocol: HTTP, protocolVersion: GRPC)
+The controller will create a gRPC target group for your service based on the exportedPorts configuration.
 
 You can then use GRPCRoute or HTTPRoute to route traffic to your exported service. For example:
 

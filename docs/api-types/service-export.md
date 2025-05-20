@@ -14,37 +14,84 @@ instead AWS Gateway API Controller uses its own version of the resource for the 
 
 
 ### Limitations
-* Limited to one ServiceExport per Service. If you need multiple exports representing each port,
-  you should create multiple Service-ServiceExport pairs.
+* Limited to one ServiceExport per Service.
 
 ### Protocol Support
-* **HTTP Traffic**: Creates an HTTP target group with HTTP1 protocol version
-* **GRPC Traffic**: Creates a GRPC target group with GRPC protocol version
-* The exported service can be used in both HTTPRoutes and GRPCRoutes
+ServiceExport supports three route types:
+* **HTTP**: Creates an HTTP target group with HTTP1 protocol version
+* **GRPC**: Creates a GRPC target group with GRPC protocol version
+* **TLS**: Creates a TCP target group for TLS passthrough
 
-### Annotations
+### Configuration
 
-* `application-networking.k8s.aws/port`  
-  Represents which port of the exported Service will be used.
-  When a comma-separated list of ports is provided, the traffic will be distributed to all ports in the list.
+You can configure which ports to export and their route types in two ways:
+
+1. Using the `exportedPorts` field in the spec (recommended):
+   ```yaml
+   spec:
+     exportedPorts:
+     - port: 80
+       routeType: HTTP
+     - port: 8081
+       routeType: GRPC
+     - port: 443
+       routeType: TLS
+   ```
+
+2. Using the legacy port annotation (deprecated):
+   ```yaml
+   metadata:
+     annotations:
+       application-networking.k8s.aws/port: "80"
+   ```
+   When using the annotation, all ports will be exported as HTTP target groups for backward compatibility.
 
 ## Example Configurations
 
-### HTTP Service Export
-The following yaml will create a ServiceExport for an HTTP Service named `service-1`:
+### Multi-Protocol Service Export
+The following example exports a service with multiple protocols:
 ```yaml
 apiVersion: application-networking.k8s.aws/v1alpha1
 kind: ServiceExport
 metadata:
-  name: service-1
-  annotations:
-    application-networking.k8s.aws/port: "9200"
-spec: {}
+  name: multi-protocol-service
+spec:
+  exportedPorts:
+  - port: 80
+    routeType: HTTP
+  - port: 8081
+    routeType: GRPC
+  - port: 443
+    routeType: TLS
+```
+
+### HTTP Service Export
+For HTTP-only services:
+```yaml
+apiVersion: application-networking.k8s.aws/v1alpha1
+kind: ServiceExport
+metadata:
+  name: http-service
+spec:
+  exportedPorts:
+  - port: 80
+    routeType: HTTP
 ```
 
 ### GRPC Service Export
-For GRPC services, you'll typically want to configure a TargetGroupPolicy along with the ServiceExport:
+For GRPC services:
+```yaml
+apiVersion: application-networking.k8s.aws/v1alpha1
+kind: ServiceExport
+metadata:
+  name: grpc-service
+spec:
+  exportedPorts:
+  - port: 50051
+    routeType: GRPC
+```
 
+You can also configure health checks using a TargetGroupPolicy:
 ```yaml
 apiVersion: application-networking.k8s.aws/v1alpha1
 kind: TargetGroupPolicy
@@ -62,14 +109,6 @@ spec:
     protocol: HTTP
     protocolVersion: GRPC
     port: 50051
----
-apiVersion: application-networking.k8s.aws/v1alpha1
-kind: ServiceExport
-metadata:
-  name: grpc-service
-  annotations:
-    application-networking.k8s.aws/port: "50051"
-spec: {}
 ```
 
 For more detailed examples of GRPC service exports, see the [GRPC guide](../guides/grpc.md#exporting-grpc-services-with-serviceexport).
