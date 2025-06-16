@@ -120,12 +120,20 @@ func (t *latticeServiceModelBuildTask) buildLatticeService(ctx context.Context) 
 		return nil, fmt.Errorf("unsupported route type: %T", t.route)
 	}
 
+	// Parse custom tags from route annotations
+	customTags, err := k8s.ParseCustomTags(t.route.K8sObject())
+	if err != nil {
+		t.log.Warnf(ctx, "Failed to parse custom tags for route %s/%s: %v", t.route.Namespace(), t.route.Name(), err)
+		customTags = make(map[string]*string) // Use empty map on error
+	}
+
 	spec := model.ServiceSpec{
 		ServiceTagFields: model.ServiceTagFields{
 			RouteName:      t.route.Name(),
 			RouteNamespace: t.route.Namespace(),
 			RouteType:      routeType,
 		},
+		CustomTags: customTags,
 	}
 
 	for _, parentRef := range t.route.Spec().ParentRefs() {

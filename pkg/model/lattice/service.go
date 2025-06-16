@@ -15,9 +15,10 @@ type Service struct {
 
 type ServiceSpec struct {
 	ServiceTagFields
-	ServiceNetworkNames []string `json:"servicenetworkhnames"`
-	CustomerDomainName  string   `json:"customerdomainname"`
-	CustomerCertARN     string   `json:"customercertarn"`
+	ServiceNetworkNames []string      `json:"servicenetworkhnames"`
+	CustomerDomainName  string        `json:"customerdomainname"`
+	CustomerCertARN     string        `json:"customercertarn"`
+	CustomTags          services.Tags `json:"customtags,omitempty"`
 }
 
 type ServiceStatus struct {
@@ -47,6 +48,19 @@ func (t *ServiceTagFields) ToTags() services.Tags {
 		K8SRouteNamespaceKey: &t.RouteNamespace,
 		K8SRouteTypeKey:      &rt,
 	}
+}
+
+// ToTags returns all tags for the service including custom tags
+func (s *ServiceSpec) ToTags() services.Tags {
+	// Start with the service tag fields
+	tags := s.ServiceTagFields.ToTags()
+
+	// Merge in custom tags
+	for k, v := range s.CustomTags {
+		tags[k] = v
+	}
+
+	return tags
 }
 
 func NewLatticeService(stack core.Stack, spec ServiceSpec) (*Service, error) {

@@ -86,17 +86,7 @@ func (s *defaultTargetGroupManager) create(ctx context.Context, modelTg *model.T
 		Config: latticeTgCfg,
 		Name:   &latticeTgName,
 		Type:   &latticeTgType,
-		Tags:   s.cloud.DefaultTags(),
-	}
-	createInput.Tags[model.K8SClusterNameKey] = &modelTg.Spec.K8SClusterName
-	createInput.Tags[model.K8SServiceNameKey] = &modelTg.Spec.K8SServiceName
-	createInput.Tags[model.K8SServiceNamespaceKey] = &modelTg.Spec.K8SServiceNamespace
-	createInput.Tags[model.K8SSourceTypeKey] = aws.String(string(modelTg.Spec.K8SSourceType))
-	createInput.Tags[model.K8SProtocolVersionKey] = &modelTg.Spec.ProtocolVersion
-
-	if modelTg.Spec.IsSourceTypeRoute() {
-		createInput.Tags[model.K8SRouteNameKey] = &modelTg.Spec.K8SRouteName
-		createInput.Tags[model.K8SRouteNamespaceKey] = &modelTg.Spec.K8SRouteNamespace
+		Tags:   s.cloud.DefaultTagsMergedWith(modelTg.Spec.ToTags()),
 	}
 
 	lattice := s.cloud.Lattice()

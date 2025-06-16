@@ -71,21 +71,8 @@ func Test_CreateTargetGroup_TGNotExist_Active(t *testing.T) {
 			Spec:         tgSpec,
 		}
 
-		expectedTags := cloud.DefaultTags()
-		expectedTags[model.K8SServiceNameKey] = &tgSpec.K8SServiceName
-		expectedTags[model.K8SServiceNamespaceKey] = &tgSpec.K8SServiceNamespace
-		expectedTags[model.K8SClusterNameKey] = &tgSpec.K8SClusterName
-		expectedTags[model.K8SProtocolVersionKey] = &tgSpec.ProtocolVersion
-
-		if tgType == "by-serviceexport" {
-			value := string(model.SourceTypeSvcExport)
-			expectedTags[model.K8SSourceTypeKey] = &value
-		} else if tgType == "by-backendref" {
-			value := string(model.SourceTypeHTTPRoute)
-			expectedTags[model.K8SSourceTypeKey] = &value
-			expectedTags[model.K8SRouteNameKey] = &tgSpec.K8SRouteName
-			expectedTags[model.K8SRouteNamespaceKey] = &tgSpec.K8SRouteNamespace
-		}
+		// Use the new ToTags method to get expected tags
+		expectedTags := cloud.DefaultTagsMergedWith(tgSpec.ToTags())
 
 		mockTagging.EXPECT().FindResourcesByTags(ctx, gomock.Any(), gomock.Any()).Return(nil, nil)
 		mockLattice.EXPECT().CreateTargetGroupWithContext(ctx, gomock.Any()).DoAndReturn(

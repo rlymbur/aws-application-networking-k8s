@@ -468,6 +468,13 @@ func (t *backendRefTargetGroupModelBuildTask) buildTargetGroupSpec(ctx context.C
 		return model.TargetGroupSpec{}, fmt.Errorf("unsupported route type %T", t.route)
 	}
 
+	// Parse custom tags from route annotations
+	customTags, err := k8s.ParseCustomTags(t.route.K8sObject())
+	if err != nil {
+		t.log.Warnf(ctx, "Failed to parse custom tags for route %s/%s: %v", t.route.Namespace(), t.route.Name(), err)
+		customTags = make(map[string]*string) // Use empty map on error
+	}
+
 	spec := model.TargetGroupSpec{
 		Type:              model.TargetGroupTypeIP,
 		Port:              80,
@@ -475,6 +482,7 @@ func (t *backendRefTargetGroupModelBuildTask) buildTargetGroupSpec(ctx context.C
 		ProtocolVersion:   protocolVersion,
 		IpAddressType:     ipAddressType,
 		HealthCheckConfig: healthCheckConfig,
+		CustomTags:        customTags,
 	}
 	spec.VpcId = vpc
 	spec.K8SSourceType = parentRefType

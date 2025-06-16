@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/vpclattice"
 
 	"github.com/aws/aws-application-networking-k8s/pkg/aws"
+	"github.com/aws/aws-application-networking-k8s/pkg/aws/services"
 	"github.com/aws/aws-application-networking-k8s/pkg/model/core"
 	"github.com/aws/aws-application-networking-k8s/pkg/utils"
 )
@@ -44,6 +45,7 @@ type TargetGroupSpec struct {
 	IpAddressType     string                        `json:"ipaddresstype"`
 	HealthCheckConfig *vpclattice.HealthCheckConfig `json:"healthcheckconfig"`
 	TargetGroupTagFields
+	CustomTags services.Tags `json:"customtags,omitempty"`
 }
 type TargetGroupTagFields struct {
 	K8SClusterName      string        `json:"k8sclustername"`
@@ -101,6 +103,19 @@ func TagsFromTGTagFields(tagFields TargetGroupTagFields) map[string]*string {
 		tags[K8SRouteNameKey] = &tagFields.K8SRouteName
 		tags[K8SRouteNamespaceKey] = &tagFields.K8SRouteNamespace
 	}
+	return tags
+}
+
+// ToTags returns all tags for the target group including custom tags
+func (t *TargetGroupSpec) ToTags() services.Tags {
+	// Start with the target group tag fields
+	tags := TagsFromTGTagFields(t.TargetGroupTagFields)
+
+	// Merge in custom tags
+	for k, v := range t.CustomTags {
+		tags[k] = v
+	}
+
 	return tags
 }
 
