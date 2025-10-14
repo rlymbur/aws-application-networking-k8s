@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://www.gateway-api-controller.eks.aws.dev/dev/guides/environment/">
+        <link rel="canonical" href="https://www.gateway-api-controller.eks.aws.dev/dev/guides/additional-tags/">
       
       
-        <link rel="prev" href="../pod-readiness-gates/">
+        <link rel="prev" href="../environment/">
       
       
-        <link rel="next" href="../additional-tags/">
+        <link rel="next" href="../../api-reference/">
       
       
       <link rel="icon" href="../../images/controller.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Configuration - AWS Gateway API Controller</title>
+        <title>Additional Tags - AWS Gateway API Controller</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#environment-variables" class="md-skip">
+        <a href="#additional-tags" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Configuration
+              Additional Tags
             
           </span>
         </div>
@@ -828,6 +828,29 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../environment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -837,13 +860,15 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
   
   
   <span class="md-ellipsis">
-    Configuration
+    Additional Tags
     
   </span>
   
@@ -856,7 +881,7 @@
   
   
   <span class="md-ellipsis">
-    Configuration
+    Additional Tags
     
   </span>
   
@@ -869,6 +894,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -877,100 +904,28 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#environment-variables" class="md-nav__link">
+  <a href="#usage" class="md-nav__link">
     <span class="md-ellipsis">
-      Environment Variables
+      Usage
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Environment Variables">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#required-iam-permissions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Required IAM Permissions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Required IAM Permissions">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#cluster_name" class="md-nav__link">
+  <a href="#how-to-ensure-you-have-these-permissions" class="md-nav__link">
     <span class="md-ellipsis">
-      CLUSTER_NAME
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#cluster_vpc_id" class="md-nav__link">
-    <span class="md-ellipsis">
-      CLUSTER_VPC_ID
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#aws_account_id" class="md-nav__link">
-    <span class="md-ellipsis">
-      AWS_ACCOUNT_ID
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#region" class="md-nav__link">
-    <span class="md-ellipsis">
-      REGION
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#log_level" class="md-nav__link">
-    <span class="md-ellipsis">
-      LOG_LEVEL
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#default_service_network" class="md-nav__link">
-    <span class="md-ellipsis">
-      DEFAULT_SERVICE_NETWORK
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#enable_service_network_override" class="md-nav__link">
-    <span class="md-ellipsis">
-      ENABLE_SERVICE_NETWORK_OVERRIDE
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#webhook_enabled" class="md-nav__link">
-    <span class="md-ellipsis">
-      WEBHOOK_ENABLED
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#disable_tagging_service_api" class="md-nav__link">
-    <span class="md-ellipsis">
-      DISABLE_TAGGING_SERVICE_API
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#route_max_concurrent_reconciles" class="md-nav__link">
-    <span class="md-ellipsis">
-      ROUTE_MAX_CONCURRENT_RECONCILES
+      How to Ensure You Have These Permissions
     </span>
   </a>
   
@@ -981,33 +936,19 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#supported-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported Resources
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../additional-tags/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Additional Tags
-    
-  </span>
-  
-
-      </a>
     </li>
   
 
@@ -1482,69 +1423,53 @@
   
 
 
-  <h1>Configuration</h1>
-
-<h3 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h3>
-<p>AWS Gateway API Controller for VPC Lattice supports a number of configuration options, which are set through environment variables.
-The following environment variables are available, and all of them are optional.</p>
-<hr />
-<h4 id="cluster_name"><code>CLUSTER_NAME</code><a class="headerlink" href="#cluster_name" title="Permanent link">&para;</a></h4>
-<p><strong>Type:</strong> <em>string</em></p>
-<p><strong>Default:</strong> <em>Inferred from IMDS metadata</em></p>
-<p>A unique name to identify a cluster. This will be used in AWS resource tags to record ownership.
-This variable is required except for EKS cluster. This needs to be specified if IMDS is not available.</p>
-<hr />
-<h4 id="cluster_vpc_id"><code>CLUSTER_VPC_ID</code><a class="headerlink" href="#cluster_vpc_id" title="Permanent link">&para;</a></h4>
-<p><strong>Type:</strong> <em>string</em></p>
-<p><strong>Default:</strong> <em>Inferred from IMDS metadata</em></p>
-<p>When running AWS Gateway API Controller outside the Kubernetes Cluster, this specifies the VPC of the cluster. This needs to be specified if IMDS is not available.</p>
-<hr />
-<h4 id="aws_account_id"><code>AWS_ACCOUNT_ID</code><a class="headerlink" href="#aws_account_id" title="Permanent link">&para;</a></h4>
-<p><strong>Type:</strong> <em>string</em></p>
-<p><strong>Default:</strong> <em>Inferred from IMDS metadata</em></p>
-<p>When running AWS Gateway API Controller outside the Kubernetes Cluster, this specifies the AWS account. This needs to be specified if IMDS is not available.</p>
-<hr />
-<h4 id="region"><code>REGION</code><a class="headerlink" href="#region" title="Permanent link">&para;</a></h4>
-<p><strong>Type:</strong> <em>string</em></p>
-<p><strong>Default:</strong> <em>Inferred from IMDS metadata</em></p>
-<p>When running AWS Gateway API Controller outside the Kubernetes Cluster, this specifies the AWS Region of VPC Lattice Service endpoint. This needs to be specified if IMDS is not available.</p>
-<hr />
-<h4 id="log_level"><code>LOG_LEVEL</code><a class="headerlink" href="#log_level" title="Permanent link">&para;</a></h4>
-<p><strong>Type:</strong> <em>string</em></p>
-<p><strong>Default:</strong> <em>"info"</em></p>
-<p>When set as "debug", the AWS Gateway API Controller will emit debug level logs.</p>
-<hr />
-<h4 id="default_service_network"><code>DEFAULT_SERVICE_NETWORK</code><a class="headerlink" href="#default_service_network" title="Permanent link">&para;</a></h4>
-<p><strong>Type:</strong> <em>string</em></p>
-<p><strong>Default:</strong> ""</p>
-<p>When set as a non-empty value, creates a service network with that name.
-The created service network will be also associated with cluster VPC.</p>
-<hr />
-<h4 id="enable_service_network_override"><code>ENABLE_SERVICE_NETWORK_OVERRIDE</code><a class="headerlink" href="#enable_service_network_override" title="Permanent link">&para;</a></h4>
-<p><strong>Type:</strong> <em>string</em></p>
-<p><strong>Default:</strong> ""</p>
-<p>When set as "true", the controller will run in "single service network" mode that will override all gateways to point to default service network, instead of searching for service network with the same name. Can be used for small setups and conformance tests.</p>
-<hr />
-<h4 id="webhook_enabled"><code>WEBHOOK_ENABLED</code><a class="headerlink" href="#webhook_enabled" title="Permanent link">&para;</a></h4>
-<p><strong>Type:</strong> <em>string</em></p>
-<p><strong>Default:</strong> ""</p>
-<p>When set as "true", the controller will start the webhook listener responsible for pod readiness gate injection 
-(see <code>pod-readiness-gates.md</code>). This is disabled by default for <code>deploy.yaml</code> because the controller will not start 
-successfully without the TLS certificate for the webhook in place. While this can be fixed by running 
-<code>scripts/gen-webhook-cert.sh</code>, it requires manual action. The webhook is enabled by default for the Helm install
-as the Helm install will also generate the necessary certificate.</p>
-<hr />
-<h4 id="disable_tagging_service_api"><code>DISABLE_TAGGING_SERVICE_API</code><a class="headerlink" href="#disable_tagging_service_api" title="Permanent link">&para;</a></h4>
-<p><strong>Type:</strong> <em>string</em></p>
-<p><strong>Default:</strong> ""</p>
-<p>When set as "true", the controller will not use the <a href="https://docs.aws.amazon.com/resourcegroupstagging/latest/APIReference/overview.html">AWS Resource Groups Tagging API</a>. </p>
-<p>The Resource Groups Tagging API is only available on the public internet and customers using private clusters will need to enable this feature. When enabled, the controller will use VPC Lattice APIs to lookup tags which are not as performant and requires more API calls.</p>
-<p>The Helm chart sets this value to "false" by default.</p>
-<hr />
-<h4 id="route_max_concurrent_reconciles"><code>ROUTE_MAX_CONCURRENT_RECONCILES</code><a class="headerlink" href="#route_max_concurrent_reconciles" title="Permanent link">&para;</a></h4>
-<p><strong>Type:</strong> <em>int</em></p>
-<p><strong>Default:</strong> 1</p>
-<p>Maximum number of concurrently running reconcile loops per route type (HTTP, GRPC, TLS)</p>
+<h1 id="additional-tags">Additional Tags<a class="headerlink" href="#additional-tags" title="Permanent link">&para;</a></h1>
+<p>The AWS Gateway API Controller automatically applies some tags to resources it creates. In addition, you can use annotations to specify additional tags.</p>
+<p>The <code>application-networking.k8s.aws/tags</code> annotation specifies additional tags that will be applied to AWS resources created.</p>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<p>Add comma separated key=value pairs to the annotation:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gateway.networking.k8s.io/v1</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HTTPRoute</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inventory-route</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="nt">application-networking.k8s.aws/tags</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Environment=Production,Team=Backend&quot;</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="c1"># ... rest of spec</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">application-networking.k8s.aws/v1alpha1</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ServiceExport</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">payment-service</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="nt">application-networking.k8s.aws/tags</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Environment=Production,Service=Payment&quot;</span><span class="w"> </span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="c1"># ... rest of spec</span>
+</code></pre></div>
+<h2 id="required-iam-permissions">Required IAM Permissions<a class="headerlink" href="#required-iam-permissions" title="Permanent link">&para;</a></h2>
+<p>For the additional tags functionality to work properly, the IAM role linked to the controller's service account must also include these permissions:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="nt">&quot;Effect&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Allow&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="nt">&quot;Action&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">        </span><span class="s2">&quot;tag:TagResources&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">        </span><span class="s2">&quot;tag:UntagResources&quot;</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span><span class="p">],</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="nt">&quot;Resource&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;*&quot;</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="how-to-ensure-you-have-these-permissions">How to Ensure You Have These Permissions<a class="headerlink" href="#how-to-ensure-you-have-these-permissions" title="Permanent link">&para;</a></h3>
+<p>The <code>config/iam/recommended-inline-policy.json</code> file contains all the required permissions including these tagging permissions.</p>
+<ul>
+<li><strong>If you are setting up for the first time</strong>: The recommended inline policy already includes all the required permissions.</li>
+<li><strong>If you used the setup steps in the <a href="https://www.gateway-api-controller.eks.aws.dev/latest/guides/deploy/#setup">deploy guide</a></strong>: You need to update the existing <code>VPCLatticeControllerIAMPolicy</code> to include the updated permissions.</li>
+</ul>
+<h2 id="supported-resources">Supported Resources<a class="headerlink" href="#supported-resources" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>HTTPRoute</strong> - Tags applied to VPC Lattice Services, Listeners, Rules, Target Groups, and Service Network Service Associations</li>
+<li><strong>ServiceExport</strong> - Tags applied to VPC Lattice Target Groups</li>
+<li><strong>AccessLogPolicy</strong> - Tags applied to VPC Lattice Access Log Subscriptions</li>
+<li><strong>VpcAssociationPolicy</strong> - Tags applied to VPC Lattice Service Network VPC Associations</li>
+</ul>
 
 
 
@@ -1582,7 +1507,7 @@ as the Helm install will also generate the necessary certificate.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../pod-readiness-gates/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Pod Readiness Gates">
+          <a href="../environment/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Configuration">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1592,20 +1517,20 @@ as the Helm install will also generate the necessary certificate.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Pod Readiness Gates
+                Configuration
               </div>
             </div>
           </a>
         
         
           
-          <a href="../additional-tags/" class="md-footer__link md-footer__link--next" aria-label="Next: Additional Tags">
+          <a href="../../api-reference/" class="md-footer__link md-footer__link--next" aria-label="Next: API Specification">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Additional Tags
+                API Specification
               </div>
             </div>
             <div class="md-footer__button md-icon">
