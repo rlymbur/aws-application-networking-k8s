@@ -32,6 +32,9 @@ const (
 	// Additional tags
 	TagsAnnotationKey = AnnotationPrefix + "tags"
 
+	// Takeover annotation allows taking over ownership from another controller
+	TakeoverAnnotation = AnnotationPrefix + "allow-takeover-from"
+
 	// AWS tag validation limits
 	maxTagKeyLength   = 128
 	maxTagValueLength = 256
@@ -422,4 +425,46 @@ func GetNonAWSManagedTags(tags Tags) Tags {
 		nonAWSManagedTags[key] = value
 	}
 	return nonAWSManagedTags
+}
+
+func ValidateTakeoverAnnotation(obj client.Object) (string, error) {
+	if obj == nil {
+		return "", fmt.Errorf("object cannot be nil")
+	}
+
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		// No annotations is valid - no takeover requested
+		return "", nil
+	}
+
+	value, exists := annotations[TakeoverAnnotation]
+	if !exists {
+		// Missing annotation is valid - no takeover requested
+		return "", nil
+	}
+
+	// Validate the annotation value
+	trimmed := strings.TrimSpace(value)
+	if value == "" || trimmed == "" {
+		return "", fmt.Errorf("takeover annotation cannot be empty or whitespace only")
+	}
+
+	return trimmed, nil
+}
+
+func GetTakeoverSourceController(route core.Route) (string, error) {
+	if route == nil {
+		return "", fmt.Errorf("route cannot be nil")
+	}
+	if route.K8sObject() == nil {
+		return "", fmt.Errorf("route K8s object cannot be nil")
+	}
+
+	return ValidateTakeoverAnnotation(route.K8sObject())
+}
+
+func HasTakeoverAnnotation(route core.Route) bool {
+	sourceController, err := GetTakeoverSourceController(route)
+	return err == nil && sourceController != ""
 }

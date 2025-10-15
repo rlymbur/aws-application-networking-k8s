@@ -77,6 +77,7 @@ type routeReconciler struct {
 const (
 	LatticeAssignedDomainName = "application-networking.k8s.aws/lattice-assigned-domain-name"
 	LatticeServiceArn         = "application-networking.k8s.aws/lattice-service-arn"
+	AllowTakeoverFrom         = "application-networking.k8s.aws/allow-takeover-from"
 )
 
 func RegisterAllRouteControllers(

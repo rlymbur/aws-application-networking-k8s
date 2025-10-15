@@ -1455,3 +1455,278 @@ func TestGetAdditionalTagsFromAnnotations(t *testing.T) {
 		})
 	}
 }
+func TestValidateTakeoverAnnotation(t *testing.T) {
+	tests := []struct {
+		name        string
+		obj         client.Object
+		expected    string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "nil object",
+			obj:         nil,
+			expected:    "",
+			expectError: true,
+			errorMsg:    "object cannot be nil",
+		},
+		{
+			name: "no annotations",
+			obj: &gwv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: "default",
+				},
+			},
+			expected:    "",
+			expectError: false,
+		},
+		{
+			name: "no takeover annotation",
+			obj: &gwv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: "default",
+					Annotations: map[string]string{
+						"other-annotation": "value",
+					},
+				},
+			},
+			expected:    "",
+			expectError: false,
+		},
+		{
+			name: "valid takeover annotation",
+			obj: &gwv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: "default",
+					Annotations: map[string]string{
+						TakeoverAnnotation: "source-controller-id",
+					},
+				},
+			},
+			expected:    "source-controller-id",
+			expectError: false,
+		},
+		{
+			name: "valid takeover annotation with whitespace",
+			obj: &gwv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: "default",
+					Annotations: map[string]string{
+						TakeoverAnnotation: "  source-controller-id  ",
+					},
+				},
+			},
+			expected:    "source-controller-id",
+			expectError: false,
+		},
+		{
+			name: "empty takeover annotation",
+			obj: &gwv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: "default",
+					Annotations: map[string]string{
+						TakeoverAnnotation: "",
+					},
+				},
+			},
+			expected:    "",
+			expectError: true,
+			errorMsg:    "takeover annotation cannot be empty or whitespace only",
+		},
+		{
+			name: "whitespace only takeover annotation",
+			obj: &gwv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: "default",
+					Annotations: map[string]string{
+						TakeoverAnnotation: "   ",
+					},
+				},
+			},
+			expected:    "",
+			expectError: true,
+			errorMsg:    "takeover annotation cannot be empty or whitespace only",
+		},
+		{
+			name: "complex controller identifier",
+			obj: &gwv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: "default",
+					Annotations: map[string]string{
+						TakeoverAnnotation: "123456789012/cluster-blue/vpc-12345",
+					},
+				},
+			},
+			expected:    "123456789012/cluster-blue/vpc-12345",
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := ValidateTakeoverAnnotation(tt.obj)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorMsg != "" {
+					assert.Contains(t, err.Error(), tt.errorMsg)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+func TestGetTakeoverSourceController(t *testing.T) {
+	tests := []struct {
+		name        string
+		route       core.Route
+		expected    string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "nil route",
+			route:       nil,
+			expected:    "",
+			expectError: true,
+			errorMsg:    "route cannot be nil",
+		},
+		{
+			name: "valid route with takeover annotation",
+			route: core.NewHTTPRoute(gwv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: "default",
+					Annotations: map[string]string{
+						TakeoverAnnotation: "source-controller",
+					},
+				},
+			}),
+			expected:    "source-controller",
+			expectError: false,
+		},
+		{
+			name: "valid route without takeover annotation",
+			route: core.NewHTTPRoute(gwv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: "default",
+				},
+			}),
+			expected:    "",
+			expectError: false,
+		},
+		{
+			name: "route with empty takeover annotation",
+			route: core.NewHTTPRoute(gwv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: "default",
+					Annotations: map[string]string{
+						TakeoverAnnotation: "",
+					},
+				},
+			}),
+			expected:    "",
+			expectError: true,
+			errorMsg:    "takeover annotation cannot be empty or whitespace only",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := GetTakeoverSourceController(tt.route)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorMsg != "" {
+					assert.Contains(t, err.Error(), tt.errorMsg)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestHasTakeoverAnnotation(t *testing.T) {
+	tests := []struct {
+		name     string
+		route    core.Route
+		expected bool
+	}{
+		{
+			name:     "nil route",
+			route:    nil,
+			expected: false,
+		},
+		{
+			name: "route with valid takeover annotation",
+			route: core.NewHTTPRoute(gwv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: "default",
+					Annotations: map[string]string{
+						TakeoverAnnotation: "source-controller",
+					},
+				},
+			}),
+			expected: true,
+		},
+		{
+			name: "route without takeover annotation",
+			route: core.NewHTTPRoute(gwv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: "default",
+				},
+			}),
+			expected: false,
+		},
+		{
+			name: "route with empty takeover annotation",
+			route: core.NewHTTPRoute(gwv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: "default",
+					Annotations: map[string]string{
+						TakeoverAnnotation: "",
+					},
+				},
+			}),
+			expected: false,
+		},
+		{
+			name: "route with whitespace-only takeover annotation",
+			route: core.NewHTTPRoute(gwv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: "default",
+					Annotations: map[string]string{
+						TakeoverAnnotation: "   ",
+					},
+				},
+			}),
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := HasTakeoverAnnotation(tt.route)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
