@@ -195,3 +195,134 @@ func Test_TryOwnFromTags(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateManagedByTag(t *testing.T) {
+	c := gomock.NewController(t)
+	defer c.Finish()
+
+	mockLattice := services.NewMockLattice(c)
+	cfg := CloudConfig{VpcId: "vpc-id", AccountId: "account-id", ClusterName: "cluster"}
+	cloud := NewDefaultCloud(mockLattice, cfg)
+
+	t.Run("successful update", func(t *testing.T) {
+		arn := "arn:aws:vpc-lattice:us-west-2:123456789012:service/svc-12345"
+		newManagedBy := "new-controller-id"
+
+		expectedTags := services.Tags{
+			TagManagedBy: aws.String(newManagedBy),
+		}
+
+		mockLattice.EXPECT().TagResourceWithContext(gomock.Any(), &vpclattice.TagResourceInput{
+			ResourceArn: aws.String(arn),
+			Tags:        expectedTags,
+		}).Return(&vpclattice.TagResourceOutput{}, nil)
+
+		err := cloud.UpdateManagedByTag(context.Background(), arn, newManagedBy)
+		assert.NoError(t, err)
+	})
+
+	t.Run("permission denied error", func(t *testing.T) {
+		arn := "arn:aws:vpc-lattice:us-west-2:123456789012:service/svc-12345"
+		newManagedBy := "new-controller-id"
+
+		expectedTags := services.Tags{
+			TagManagedBy: aws.String(newManagedBy),
+		}
+
+		mockLattice.EXPECT().TagResourceWithContext(gomock.Any(), &vpclattice.TagResourceInput{
+			ResourceArn: aws.String(arn),
+			Tags:        expectedTags,
+		}).Return(nil, errors.New("AccessDenied: User is not authorized to perform: vpc-lattice:TagResource"))
+
+		err := cloud.UpdateManagedByTag(context.Background(), arn, newManagedBy)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "AccessDenied")
+	})
+
+	t.Run("invalid ARN error", func(t *testing.T) {
+		arn := "invalid-arn"
+		newManagedBy := "new-controller-id"
+
+		expectedTags := services.Tags{
+			TagManagedBy: aws.String(newManagedBy),
+		}
+
+		mockLattice.EXPECT().TagResourceWithContext(gomock.Any(), &vpclattice.TagResourceInput{
+			ResourceArn: aws.String(arn),
+			Tags:        expectedTags,
+		}).Return(nil, errors.New("ValidationException: Invalid ARN format"))
+
+		err := cloud.UpdateManagedByTag(context.Background(), arn, newManagedBy)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "ValidationException")
+	})
+}
+
+func TestCloud_GetManagedByTag(t *testing.T) {
+	c := gomock.NewController(t)
+	defer c.Finish()
+
+	mockLattice := services.NewMockLattice(c)
+	cfg := CloudConfig{VpcId: "vpc-id", AccountId: "account-id", ClusterName: "cluster"}
+	cloud := NewDefaultCloud(mockLattice, cfg)
+
+	t.Run("existing tag", func(t *testing.T) {
+		arn := "arn:aws:vpc-lattice:us-west-2:123456789012:service/svc-12345"
+		expectedManagedBy := "existing-controller-id"
+
+		mockLattice.EXPECT().ListTagsForResourceWithContext(gomock.Any(), &vpclattice.ListTagsForResourceInput{
+			ResourceArn: aws.String(arn),
+		}).Return(&vpclattice.ListTagsForResourceOutput{
+			Tags: services.Tags{
+				TagManagedBy: aws.String(expectedManagedBy),
+			},
+		}, nil)
+
+		managedBy, err := cloud.GetManagedByTag(context.Background(), arn)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedManagedBy, managedBy)
+	})
+
+	t.Run("missing tag", func(t *testing.T) {
+		arn := "arn:aws:vpc-lattice:us-west-2:123456789012:service/svc-12345"
+
+		mockLattice.EXPECT().ListTagsForResourceWithContext(gomock.Any(), &vpclattice.ListTagsForResourceInput{
+			ResourceArn: aws.String(arn),
+		}).Return(&vpclattice.ListTagsForResourceOutput{
+			Tags: services.Tags{},
+		}, nil)
+
+		managedBy, err := cloud.GetManagedByTag(context.Background(), arn)
+		assert.NoError(t, err)
+		assert.Equal(t, "", managedBy)
+	})
+
+	t.Run("AWS API error", func(t *testing.T) {
+		arn := "arn:aws:vpc-lattice:us-west-2:123456789012:service/svc-12345"
+
+		mockLattice.EXPECT().ListTagsForResourceWithContext(gomock.Any(), &vpclattice.ListTagsForResourceInput{
+			ResourceArn: aws.String(arn),
+		}).Return(nil, errors.New("ServiceUnavailable: Service temporarily unavailable"))
+
+		managedBy, err := cloud.GetManagedByTag(context.Background(), arn)
+		assert.Error(t, err)
+		assert.Equal(t, "", managedBy)
+		assert.Contains(t, err.Error(), "ServiceUnavailable")
+	})
+
+	t.Run("nil tag value", func(t *testing.T) {
+		arn := "arn:aws:vpc-lattice:us-west-2:123456789012:service/svc-12345"
+
+		mockLattice.EXPECT().ListTagsForResourceWithContext(gomock.Any(), &vpclattice.ListTagsForResourceInput{
+			ResourceArn: aws.String(arn),
+		}).Return(&vpclattice.ListTagsForResourceOutput{
+			Tags: services.Tags{
+				TagManagedBy: nil,
+			},
+		}, nil)
+
+		managedBy, err := cloud.GetManagedByTag(context.Background(), arn)
+		assert.NoError(t, err)
+		assert.Equal(t, "", managedBy)
+	})
+}

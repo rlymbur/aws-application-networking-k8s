@@ -52,6 +52,12 @@ type Cloud interface {
 	// MergeTags creates a new tag map by merging baseTags and additionalTags.
 	// BaseTags will override additionalTags for any duplicate keys.
 	MergeTags(baseTags services.Tags, additionalTags services.Tags) services.Tags
+
+	// UpdateManagedByTag updates the ManagedBy tag for a resource
+	UpdateManagedByTag(ctx context.Context, arn string, newManagedBy string) error
+
+	// GetManagedByTag retrieves the current ManagedBy tag value
+	GetManagedByTag(ctx context.Context, arn string) (string, error)
 }
 
 // NewCloud constructs new Cloud implementation.
@@ -216,6 +222,25 @@ func (c *defaultCloud) ownResource(ctx context.Context, arn string) error {
 
 func (c *defaultCloud) isOwner(managedBy string) bool {
 	return managedBy == c.managedByTag
+}
+
+func (c *defaultCloud) UpdateManagedByTag(ctx context.Context, arn string, newManagedBy string) error {
+	tags := services.Tags{
+		TagManagedBy: &newManagedBy,
+	}
+	_, err := c.Lattice().TagResourceWithContext(ctx, &vpclattice.TagResourceInput{
+		ResourceArn: &arn,
+		Tags:        tags,
+	})
+	return err
+}
+
+func (c *defaultCloud) GetManagedByTag(ctx context.Context, arn string) (string, error) {
+	tags, err := c.getTags(ctx, arn)
+	if err != nil {
+		return "", err
+	}
+	return c.getManagedByFromTags(tags), nil
 }
 
 func getManagedByTag(cfg CloudConfig) string {
