@@ -72,6 +72,7 @@ type routeReconciler struct {
 	stackDeployer    deploy.StackDeployer
 	stackMarshaller  deploy.StackMarshaller
 	cloud            aws.Cloud
+	takeoverManager  TakeoverManager
 }
 
 const (
@@ -112,6 +113,7 @@ func RegisterAllRouteControllers(
 			stackDeployer:    deploy.NewLatticeServiceStackDeploy(log, cloud, mgrClient),
 			stackMarshaller:  deploy.NewDefaultStackMarshaller(),
 			cloud:            cloud,
+			takeoverManager:  NewTakeoverManager(log, cloud, mgrClient),
 		}
 
 		svcImportEventHandler := eventhandlers.NewServiceImportEventHandler(log, mgrClient)
@@ -332,6 +334,11 @@ func (r *routeReconciler) reconcileUpsert(ctx context.Context, req ctrl.Request,
 		}
 
 		return backendRefIPFamiliesErr
+	}
+
+	// Check for takeover annotation and attempt takeover if present
+	if err := r.handleTakeover(ctx, route); err != nil {
+		return err
 	}
 
 	if _, err := r.buildAndDeployModel(ctx, route); err != nil {
@@ -606,4 +613,81 @@ func (r *routeReconciler) newCondition(route core.Route, t gwv1.RouteConditionTy
 		Reason:             string(reason),
 		Message:            msg,
 	}
+}
+
+func (r *routeReconciler) handleTakeover(ctx context.Context, route core.Route) error {
+	annotations := route.K8sObject().GetAnnotations()
+	if annotations == nil {
+		return nil
+	}
+
+	takeoverAnnotation, exists := annotations[AllowTakeoverFrom]
+	if !exists {
+		return nil
+	}
+
+	serviceName := k8sutils.LatticeServiceName(route.Name(), route.Namespace())
+	r.log.Infow(ctx, "takeover annotation detected",
+		"route", route.Name(),
+		"namespace", route.Namespace(),
+		"sourceController", takeoverAnnotation,
+		"targetService", serviceName,
+		"routeType", string(r.routeType))
+
+	// Validate takeover annotation
+	if err := r.takeoverManager.ValidateTakeoverAnnotation(takeoverAnnotation); err != nil {
+		r.log.Errorw(ctx, "invalid takeover annotation",
+			"route", route.Name(),
+			"namespace", route.Namespace(),
+			"annotation", takeoverAnnotation,
+			"targetService", serviceName,
+			"routeType", string(r.routeType),
+			"error", err)
+		r.eventRecorder.Event(route.K8sObject(), corev1.EventTypeWarning,
+			"TakeoverValidationFailed", fmt.Sprintf("Invalid takeover annotation: %s", err.Error()))
+		return fmt.Errorf("invalid takeover annotation: %w", err)
+	}
+
+	// Emit takeover attempt started event
+	r.eventRecorder.Event(route.K8sObject(), corev1.EventTypeNormal,
+		"TakeoverAttemptStarted", fmt.Sprintf("Attempting takeover from controller: %s", takeoverAnnotation))
+
+	// Attempt takeover
+	success, err := r.takeoverManager.AttemptTakeover(ctx, route, takeoverAnnotation)
+	if err != nil {
+		r.log.Errorw(ctx, "takeover attempt failed",
+			"route", route.Name(),
+			"namespace", route.Namespace(),
+			"sourceController", takeoverAnnotation,
+			"targetService", serviceName,
+			"routeType", string(r.routeType),
+			"error", err)
+		r.eventRecorder.Event(route.K8sObject(), corev1.EventTypeWarning,
+			"TakeoverFailed", fmt.Sprintf("Takeover failed for controller %s: %s", takeoverAnnotation, err.Error()))
+		return fmt.Errorf("takeover failed: %w", err)
+	}
+
+	if success {
+		r.log.Infow(ctx, "takeover completed successfully",
+			"route", route.Name(),
+			"namespace", route.Namespace(),
+			"sourceController", takeoverAnnotation,
+			"targetService", serviceName,
+			"routeType", string(r.routeType))
+
+		// Try to get service ARN for more detailed event message
+		serviceName := k8sutils.LatticeServiceName(route.Name(), route.Namespace())
+		svc, svcErr := r.cloud.Lattice().FindService(ctx, serviceName)
+		var eventMsg string
+		if svcErr == nil && svc != nil && svc.Arn != nil {
+			eventMsg = fmt.Sprintf("Successfully took over service %s from controller: %s", *svc.Arn, takeoverAnnotation)
+		} else {
+			eventMsg = fmt.Sprintf("Successfully took over service from controller: %s", takeoverAnnotation)
+		}
+
+		r.eventRecorder.Event(route.K8sObject(), corev1.EventTypeNormal,
+			"TakeoverSucceeded", eventMsg)
+	}
+
+	return nil
 }

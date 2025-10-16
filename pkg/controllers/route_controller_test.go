@@ -562,6 +562,119 @@ func TestRouteReconciler_UpdateRouteStatusWithServiceInfo(t *testing.T) {
 	})
 }
 
+func TestRouteReconciler_HandleTakeover(t *testing.T) {
+	c := gomock.NewController(t)
+	defer c.Finish()
+	ctx := context.TODO()
+
+	// Create a simple mock implementation for testing
+	mockTakeoverManager := &mockTakeoverManager{}
+	mockEventRecorder := &mockEventRecorder{}
+	mockCloud := aws2.NewMockCloud(c)
+	mockLattice := mocks.NewMockLattice(c)
+
+	reconciler := &routeReconciler{
+		log:             gwlog.FallbackLogger,
+		takeoverManager: mockTakeoverManager,
+		eventRecorder:   mockEventRecorder,
+		cloud:           mockCloud,
+	}
+
+	t.Run("no takeover annotation", func(t *testing.T) {
+		route := core.NewHTTPRoute(gwv1.HTTPRoute{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-route",
+				Namespace: "test-ns",
+			},
+		})
+
+		err := reconciler.handleTakeover(ctx, route)
+		assert.NoError(t, err)
+	})
+
+	t.Run("valid takeover annotation", func(t *testing.T) {
+		route := core.NewHTTPRoute(gwv1.HTTPRoute{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-route",
+				Namespace: "test-ns",
+				Annotations: map[string]string{
+					AllowTakeoverFrom: "source-controller-id",
+				},
+			},
+		})
+
+		mockTakeoverManager.validateResult = nil
+		mockTakeoverManager.attemptResult = true
+		mockTakeoverManager.attemptError = nil
+
+		// Mock the cloud service call for event message enhancement
+		mockCloud.EXPECT().Lattice().Return(mockLattice)
+		mockLattice.EXPECT().FindService(ctx, "test-route-test-ns").Return(nil, mocks.NewNotFoundError("Service", "test-route-test-ns"))
+
+		err := reconciler.handleTakeover(ctx, route)
+		assert.NoError(t, err)
+		assert.Equal(t, "source-controller-id", mockTakeoverManager.lastValidateAnnotation)
+		assert.Equal(t, "source-controller-id", mockTakeoverManager.lastAttemptSourceID)
+	})
+
+	t.Run("invalid takeover annotation", func(t *testing.T) {
+		route := core.NewHTTPRoute(gwv1.HTTPRoute{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-route",
+				Namespace: "test-ns",
+				Annotations: map[string]string{
+					AllowTakeoverFrom: "",
+				},
+			},
+		})
+
+		mockTakeoverManager.validateResult = assert.AnError
+
+		err := reconciler.handleTakeover(ctx, route)
+		assert.Error(t, err)
+		assert.Equal(t, "", mockTakeoverManager.lastValidateAnnotation)
+	})
+}
+
+// Simple mock implementations for testing
+type mockTakeoverManager struct {
+	validateResult         error
+	attemptResult          bool
+	attemptError           error
+	lastValidateAnnotation string
+	lastAttemptSourceID    string
+}
+
+func (m *mockTakeoverManager) ValidateTakeoverAnnotation(annotation string) error {
+	m.lastValidateAnnotation = annotation
+	return m.validateResult
+}
+
+func (m *mockTakeoverManager) AttemptTakeover(ctx context.Context, route core.Route, sourceControllerID string) (bool, error) {
+	m.lastAttemptSourceID = sourceControllerID
+	return m.attemptResult, m.attemptError
+}
+
+func (m *mockTakeoverManager) IsRetryableError(err error) bool {
+	return false
+}
+
+type mockEventRecorder struct {
+	events []string
+}
+
+func (m *mockEventRecorder) Event(object runtime.Object, eventtype, reason, message string) {
+	m.events = append(m.events, eventtype+":"+reason+":"+message)
+}
+
+func (m *mockEventRecorder) Eventf(object runtime.Object, eventtype, reason, messageFmt string, args ...interface{}) {
+	// Not implemented for this test
+}
+
+func (m *mockEventRecorder) AnnotatedEventf(object runtime.Object, annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{}) {
+	// Not implemented for this test
+}
+
 func addOptionalCRDs(scheme *runtime.Scheme) {
 	dnsEndpoint := schema.GroupVersion{
 		Group:   "externaldns.k8s.io",
